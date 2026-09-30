@@ -1,0 +1,167 @@
+grammar dk.sdu.Bdd with org.eclipse.xtext.common.Terminals
+
+generate bdd "http://www.sdu.dk/Bdd"
+
+Model:
+    'model' name=ID
+    entities+=Entity+
+    scenarios+=Scenario+
+    requirements+=Requirement*
+;
+
+Entity:
+    'entity' name=ID '{'
+        'states:' states+=State+
+        ('properties:' properties+=Property*)?
+    '}'
+;
+
+State:
+    name=ID
+;
+
+Property:
+    name=ID '=' value=INT
+;
+
+Scenario:
+    'scenario:' name=ID
+    'given' guards+=Condition ('and' guards+=Condition)*
+    trigger=Trigger
+    'then' effects+=Effect ('and' effects+=Effect)*
+;
+
+Trigger:
+    WhenTrigger | WheneverTrigger
+;
+
+WhenTrigger:
+    'when' event=Event
+;
+
+WheneverTrigger:
+    'whenever' event=Event
+;
+
+Event:
+      time=TimeEvent 'and' end=EndEvent
+    | time=TimeEvent
+    | end=EndEvent
+;
+
+TimeEvent:
+    amount=INT unit=TimeUnit 'have' 'passed'
+;
+
+EndEvent:
+    entity=[Entity] state=[State] 'finishes'
+;
+
+enum TimeUnit:
+    MILLISECONDS = 'milliseconds' |
+    SECONDS      = 'seconds'      |
+    MINUTES      = 'minutes'      |
+    HOURS        = 'hours'
+;
+
+Condition:
+    StateCondition | PropCondition | BetweenCondition
+;
+
+StateCondition:
+    entity=[Entity] 'is' (negated?='not')? 'in'? state=[State]
+;
+
+PropCondition:
+    ref=PropRef comp=Comp value=Value
+;
+
+BetweenCondition:
+    ref=PropRef 'is' 'between' low=Value ',' high=Value
+;
+
+Effect:
+    StateEffect | AssignEffect | DeltaEffect | RandomEffect
+;
+
+StateEffect:
+    entity=[Entity] 'is' state=[State]
+;
+
+AssignEffect:
+    ref=PropRef 'is' value=Value
+;
+
+DeltaEffect:
+    ref=PropRef 'is' op=DeltaOp 'by' value=Value
+;
+
+enum DeltaOp:
+    INC = 'increased' |
+    DEC = 'decreased'
+;
+
+RandomEffect:
+    ref=PropRef 'is' 'between' low=Value ',' high=Value
+;
+
+PropRef:
+    entity=[Entity] 's' prop=[Property]
+;
+
+Value:
+    PropValue | NumberValue
+;
+
+PropValue:
+    ref=PropRef
+;
+
+NumberValue:
+    value=INT
+;
+
+enum Comp:
+    GEQ = 'is_greater_or_equal_to' |
+    LEQ = 'is_less_or_equal_to'    |
+    GT  = 'is_greater_than'        |
+    LT  = 'is_less_than'           |
+    NEQ = 'is_not'                 |
+    EQ  = 'is'
+;
+
+Requirement:
+    'requirement:' name=ID
+    'given' 'the' 'system' 'is' 'running'
+    (timeBound=TimeBound)?
+    'check' check=Check
+;
+
+TimeBound:
+    'within' amount=INT unit=TimeUnit
+;
+
+
+Check:
+    CheckQuery | NeverCheck | MaxCheck | MinCheck
+;
+
+CheckQuery:
+    (existential?='can' | 'should') (diamond?='eventually' | 'always') 'be' cond=ReqCond
+;
+
+NeverCheck:
+    'should' 'never' 'be' cond=ReqCond
+;
+
+MaxCheck:
+    'the' 'maximum' 'of' ref=PropRef
+;
+
+MinCheck:
+    'the' 'minimum' 'of' ref=PropRef
+;
+
+ReqCond returns ReqCond:
+    StateCondition | PropCondition | BetweenCondition
+;

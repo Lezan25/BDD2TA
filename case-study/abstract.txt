@@ -1,0 +1,200 @@
+model(simplified_i4_factory,
+  entity(user,
+    states = [idle, waiting, ordering],
+    state = idle,
+    ordered_amount = 0),
+  entity(raw_storage,
+    states = [idle, empty],
+    state = idle,
+    level = 100),
+  entity(dough_maker,
+    states = [idle, requesting, processing],
+    state = idle),
+  entity(dough_shaper,
+    states = [idle, shaping],
+    state = idle,
+    queue = 0),
+  entity(baking_oven,
+    states = [idle, baking],
+    state = idle,
+    queue = 0),
+  entity(cooling_rack,
+    states = [idle, cooling],
+    state = idle,
+    queue = 0),
+  entity(packaging_machine,
+    states = [idle, packaging],
+    state = idle,
+    queue = 0),
+  entity(product_storage,
+    states = [idle],
+    state = idle,
+    level = 0),
+  entity(restocker,
+    states = [idle, restocking],
+    state = idle),
+  scenario(user_starts,
+    user.state = idle ∧ dough_maker.state = idle,
+    user.clock = 0,
+    user.state = waiting ;
+    dough_maker.state = requesting),
+  scenario(user_starts_ordering,
+    user.state = waiting,
+    user.clock = 30,
+    user.state = ordering ;
+    user.ordered_amount = random(1, 8)),
+  scenario(user_orders_products,
+    user.state = ordering ∧ dough_maker.state ≠ idle ∧ user.ordered_amount > 0 ∧ user.ordered_amount ≤ product_storage.level,
+    user.clock = 5,
+    user.state = ordering ;
+    product_storage.level = product_storage.level - user.ordered_amount ;
+    user.ordered_amount = random(1, 8)),
+  scenario(user_orders_products_b,
+    user.state = ordering ∧ user.ordered_amount > 0 ∧ user.ordered_amount ≤ product_storage.level ∧ dough_maker.state = idle ∧ product_storage.level > 50,
+    user.clock = 5,
+    user.state = ordering ;
+    product_storage.level = product_storage.level - user.ordered_amount ;
+    user.ordered_amount = random(1, 8)),
+  scenario(user_orders_products_c,
+    user.state = ordering ∧ user.ordered_amount > 0 ∧ user.ordered_amount ≤ product_storage.level ∧ dough_maker.state = idle ∧ product_storage.level ≤ 50,
+    user.clock = 5,
+    user.state = ordering ;
+    product_storage.level = product_storage.level - user.ordered_amount ;
+    dough_maker.state = requesting ;
+    user.ordered_amount = random(1, 8)),
+  scenario(user_orders_products_d,
+    user.state = ordering ∧ user.ordered_amount > 0 ∧ user.ordered_amount > product_storage.level,
+    user.clock = 5,
+    user.state = waiting),
+  scenario(request_raw_ingredients,
+    dough_maker.state = requesting ∧ raw_storage.level ≥ 6 ∧ raw_storage.level ≤ 20,
+    dough_maker.clock = 5,
+    raw_storage.level = raw_storage.level - 5 ;
+    dough_maker.state = processing),
+  scenario(request_raw_ingredients_b,
+    dough_maker.state = requesting ∧ raw_storage.level ≥ 21 ∧ raw_storage.level ≤ 25 ∧ restocker.state = idle,
+    dough_maker.clock = 5,
+    dough_maker.state = requesting ;
+    restocker.state = restocking ;
+    raw_storage.level = raw_storage.level - 5 ;
+    dough_maker.state = processing),
+  scenario(request_raw_ingredients_c,
+    dough_maker.state = requesting ∧ raw_storage.level > 25,
+    dough_maker.clock = 5,
+    raw_storage.level = raw_storage.level - 5 ;
+    dough_maker.state = processing),
+  scenario(request_raw_ingredients_d,
+    dough_maker.state = requesting ∧ raw_storage.level = 5,
+    dough_maker.clock = 5,
+    raw_storage.state = empty ;
+    raw_storage.level = 0 ;
+    dough_maker.state = processing),
+  scenario(request_raw_ingredients_e,
+    dough_maker.state = requesting ∧ raw_storage.level < 5,
+    dough_maker.clock = 5,
+    dough_maker.state = requesting ;
+    raw_storage.state = empty),
+  scenario(dough_processing_ends,
+    dough_maker.state = processing,
+    dough_maker.clock = 5,
+    dough_maker.state = requesting ;
+    dough_shaper.state = shaping ;
+    dough_shaper.queue = dough_shaper.queue + 1),
+  scenario(dough_shaping_ends,
+    dough_shaper.state = shaping ∧ dough_shaper.queue = 1,
+    dough_shaper.clock = 5,
+    dough_shaper.state = idle ;
+    dough_shaper.queue = 0 ;
+    baking_oven.state = baking ;
+    baking_oven.queue = baking_oven.queue + 1),
+  scenario(dough_shaping_ends_b,
+    dough_shaper.state = shaping ∧ dough_shaper.queue > 1,
+    dough_shaper.clock = 5,
+    dough_shaper.state = shaping ;
+    dough_shaper.queue = dough_shaper.queue - 1 ;
+    baking_oven.state = baking ;
+    baking_oven.queue = baking_oven.queue + 1),
+  scenario(baking_ends,
+    baking_oven.state = baking ∧ baking_oven.queue = 1,
+    baking_oven.clock = 5,
+    baking_oven.state = idle ;
+    baking_oven.queue = 0 ;
+    cooling_rack.state = cooling ;
+    cooling_rack.queue = cooling_rack.queue + 1),
+  scenario(baking_ends_b,
+    baking_oven.state = baking ∧ baking_oven.queue > 1,
+    baking_oven.clock = 5,
+    baking_oven.state = baking ;
+    baking_oven.queue = baking_oven.queue - 1 ;
+    cooling_rack.state = cooling ;
+    cooling_rack.queue = cooling_rack.queue + 1),
+  scenario(cooling_ends,
+    cooling_rack.state = cooling ∧ cooling_rack.queue = 1,
+    cooling_rack.clock = 5,
+    cooling_rack.state = idle ;
+    cooling_rack.queue = 0 ;
+    packaging_machine.state = packaging ;
+    packaging_machine.queue = packaging_machine.queue + 1),
+  scenario(cooling_ends_b,
+    cooling_rack.state = cooling ∧ cooling_rack.queue > 1,
+    cooling_rack.clock = 5,
+    cooling_rack.state = cooling ;
+    cooling_rack.queue = cooling_rack.queue - 1 ;
+    packaging_machine.state = packaging ;
+    packaging_machine.queue = packaging_machine.queue + 1),
+  scenario(packaging_ends,
+    packaging_machine.state = packaging ∧ packaging_machine.queue = 1 ∧ product_storage.level < 85,
+    packaging_machine.clock = 5,
+    packaging_machine.state = idle ;
+    packaging_machine.queue = 0 ;
+    product_storage.level = product_storage.level + 5),
+  scenario(packaging_ends_b,
+    packaging_machine.state = packaging ∧ packaging_machine.queue > 1 ∧ product_storage.level < 85,
+    packaging_machine.clock = 5,
+    packaging_machine.state = packaging ;
+    packaging_machine.queue = packaging_machine.queue - 1 ;
+    product_storage.level = product_storage.level + 5),
+  scenario(packaging_ends_c,
+    packaging_machine.state = packaging ∧ packaging_machine.queue = 1 ∧ product_storage.level ≥ 85 ∧ dough_maker.state = requesting,
+    packaging_machine.clock = 5,
+    packaging_machine.state = idle ;
+    packaging_machine.queue = 0 ;
+    product_storage.level = product_storage.level + 5 ;
+    dough_maker.state = idle),
+  scenario(packaging_ends_d,
+    packaging_machine.state = packaging ∧ packaging_machine.queue = 1 ∧ product_storage.level ≥ 85 ∧ dough_maker.state = processing,
+    packaging_machine.clock = 5 & on_end(dough_maker, processing),
+    packaging_machine.state = idle ;
+    packaging_machine.queue = 0 ;
+    product_storage.level = product_storage.level + 5 ;
+    dough_maker.state = idle ;
+    dough_shaper.state = shaping ;
+    dough_shaper.queue = dough_shaper.queue + 1),
+  scenario(packaging_ends_e,
+    packaging_machine.state = packaging ∧ packaging_machine.queue > 1 ∧ product_storage.level ≥ 85 ∧ dough_maker.state = requesting,
+    packaging_machine.clock = 5,
+    packaging_machine.state = packaging ;
+    packaging_machine.queue = packaging_machine.queue - 1 ;
+    product_storage.level = product_storage.level + 5 ;
+    dough_maker.state = idle),
+  scenario(packaging_ends_f,
+    packaging_machine.state = packaging ∧ packaging_machine.queue > 1 ∧ product_storage.level ≥ 85 ∧ dough_maker.state = processing,
+    packaging_machine.clock = 5 & on_end(dough_maker, processing),
+    packaging_machine.state = packaging ;
+    packaging_machine.queue = packaging_machine.queue - 1 ;
+    product_storage.level = product_storage.level + 5 ;
+    dough_maker.state = idle ;
+    dough_shaper.state = shaping ;
+    dough_shaper.queue = dough_shaper.queue + 1),
+  scenario(restock,
+    restocker.state = restocking,
+    restocker.clock = 10,
+    raw_storage.state = idle ;
+    raw_storage.level = 100 ;
+    restocker.state = idle),
+  requirement(peak_shaper_backlog,
+    within(400),
+    max(dough_shaper.queue)),
+  requirement(lowest_storage_stock_level,
+    within(400),
+    min(product_storage.level)))

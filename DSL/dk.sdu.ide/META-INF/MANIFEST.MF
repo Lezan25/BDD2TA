@@ -1,0 +1,19 @@
+Manifest-Version: 1.0
+Automatic-Module-Name: dk.sdu.ide
+Bundle-ManifestVersion: 2
+Bundle-Name: dk.sdu.ide
+Bundle-Vendor: My Company
+Bundle-Version: 1.0.0.qualifier
+Bundle-SymbolicName: dk.sdu.ide; singleton:=true
+Bundle-ActivationPolicy: lazy
+Require-Bundle: dk.sdu,
+ org.eclipse.xtext.ide,
+ org.eclipse.xtext.xbase.ide,
+ org.antlr.runtime;bundle-version="[3.2.0,3.2.1)",
+ org.eclipse.jetty.http;bundle-version="12.1.4",
+ org.eclipse.jetty.io;bundle-version="12.1.4",
+ org.eclipse.jetty.server;bundle-version="12.1.4",
+ org.eclipse.jetty.util;bundle-version="12.1.4"
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Export-Package: dk.sdu.ide.contentassist.antlr,
+ dk.sdu.ide.contentassist.antlr.internal

@@ -1,0 +1,2373 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDD to Timed Automata Studio</title>
+<style>
+  :root[data-theme="dark"] {
+    --bg-app: #10141a;
+    --bg-panel: #161b22;
+    --bg-panel-raised: #1c222b;
+    --border: #2a323d;
+    --border-soft: #212831;
+    --text-primary: #e7ebf0;
+    --text-secondary: #8f9bab;
+    --text-faint: #5c6b7d;
+    --accent: #e8a33d;
+    --accent-dim: #8a662a;
+    --ok: #4fbf7a;
+    --warn: #e8a33d;
+    --error: #e0605a;
+    --editor-bg: #ffffff;
+    --shadow: rgba(0, 0, 0, 0.35);
+  }
+
+  :root[data-theme="light"] {
+    --bg-app: #f4f5f2;
+    --bg-panel: #ffffff;
+    --bg-panel-raised: #fbfbf9;
+    --border: #d9dcd4;
+    --border-soft: #e5e7e0;
+    --text-primary: #1c2128;
+    --text-secondary: #57616f;
+    --text-faint: #8a92a0;
+    --accent: #b9761f;
+    --accent-dim: #e6c393;
+    --ok: #2f8f57;
+    --warn: #b9761f;
+    --error: #c03f39;
+    --editor-bg: #ffffff;
+    --shadow: rgba(20, 24, 30, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    font-family: -apple-system, "Segoe UI", "IBM Plex Sans", Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  header.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+    min-height: 52px;
+    padding: 0 18px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    border: 1.5px solid var(--accent);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+  }
+
+  .brand-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .brand-subtitle {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 1px;
+  }
+
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    flex-shrink: 0;
+  }
+
+  .status-dot.connecting {
+    background: var(--warn);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+
+  .status-dot.connected { background: var(--ok); }
+  .status-dot.error, .status-dot.disconnected { background: var(--error); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .theme-toggle {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel-raised);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .theme-toggle svg { width: 16px; height: 16px; }
+
+  main.workspace {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  .editor-column {
+    flex: 0 0 65%;
+    display: flex;
+    flex-direction: column;
+    min-width: 320px;
+  }
+
+  .column-resizer {
+    flex: 0 0 5px;
+    cursor: col-resize;
+    background: var(--border);
+  }
+
+  .column-resizer:hover, .column-resizer.dragging {
+    background: var(--accent);
+  }
+
+  .feedback-column {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 280px;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 14px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+  }
+
+  .file-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .file-tag::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+
+  .editor-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .font-size-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .font-size-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel-raised);
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .font-size-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .diagnostics-summary {
+    display: flex;
+    gap: 14px;
+  }
+
+  .diagnostics-summary span { display: flex; align-items: center; gap: 5px; }
+
+  .diag-count-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .diag-count-dot.error { background: var(--error); }
+  .diag-count-dot.warning { background: var(--warn); }
+
+  .tab-strip {
+    display: flex;
+    gap: 2px;
+    padding: 6px 10px 0 10px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .tab-button {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 6px 6px 0 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .tab-button:hover {
+    color: var(--text-primary);
+    background: var(--bg-panel-raised);
+  }
+
+  .tab-button.active {
+    color: var(--text-primary);
+    background: var(--bg-panel-raised);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  .tab-dot.error { background: var(--error); }
+  .tab-dot.warning { background: var(--warn); }
+
+  #monaco-container {
+    flex: 1;
+    min-height: 0;
+    background: var(--editor-bg);
+  }
+
+  .actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    min-height: 52px;
+    padding: 0 16px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    justify-content: flex-end;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel-raised);
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: not-allowed;
+    opacity: 0.55;
+    transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+
+  .btn:not(:disabled) {
+    cursor: pointer;
+    opacity: 1;
+  }
+
+  .btn svg { width: 14px; height: 14px; }
+
+  .btn.save-btn {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+
+  .btn.save-btn:not(:disabled) {
+    background: color-mix(in srgb, var(--ok) 14%, var(--bg-panel-raised));
+  }
+
+  .btn.save-btn:not(:disabled):hover {
+    background: color-mix(in srgb, var(--ok) 26%, var(--bg-panel-raised));
+  }
+
+  .btn.run-btn {
+    border-color: var(--error);
+    color: var(--error);
+  }
+
+  .btn.run-btn:not(:disabled) {
+    background: color-mix(in srgb, var(--error) 14%, var(--bg-panel-raised));
+  }
+
+  .btn.run-btn:not(:disabled):hover {
+    background: color-mix(in srgb, var(--error) 26%, var(--bg-panel-raised));
+  }
+
+  .save-status {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 12px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .save-status:empty { display: none; }
+  .save-status.info { color: var(--text-secondary); }
+  .save-status.success { color: var(--ok); }
+  .save-status.error { color: var(--error); }
+
+  .accuracy-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 10px 16px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .accuracy-field {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .accuracy-field label {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .accuracy-input-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    background: var(--bg-panel-raised);
+  }
+
+  .accuracy-input-group input {
+    width: 44px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+    text-align: right;
+  }
+
+  .accuracy-input-group input:focus { outline: none; }
+
+  .accuracy-input-group span {
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  .accuracy-readout {
+    font-size: 11.5px;
+    color: var(--text-faint);
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .feedback-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 18px;
+    background: var(--bg-panel-raised);
+  }
+
+  .feedback-header {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 14px 0;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 40px 10px;
+    color: var(--text-secondary);
+  }
+
+  .empty-state svg {
+    width: 34px;
+    height: 34px;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+  }
+
+  .empty-state-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .empty-state-copy {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    line-height: 1.5;
+    max-width: 240px;
+  }
+
+  .hidden { display: none !important; }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 50px 10px;
+    color: var(--text-secondary);
+  }
+
+  .spinner {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: bdd-spin 0.8s linear infinite;
+  }
+
+  @keyframes bdd-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-size: 12.5px;
+  }
+
+  .error-state {
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid var(--error);
+    background: color-mix(in srgb, var(--error) 10%, var(--bg-panel));
+    color: var(--error);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .result-card {
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    background: var(--bg-panel);
+    padding: 12px;
+  }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .result-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .result-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .result-badge.satisfied { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .result-badge.not-satisfied { background: color-mix(in srgb, var(--error) 18%, transparent); color: var(--error); }
+  .result-badge.probabilistic { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .result-badge.extremum { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .result-badge.unknown { background: color-mix(in srgb, var(--text-faint) 18%, transparent); color: var(--text-faint); }
+  .result-badge.error { background: color-mix(in srgb, var(--error) 18%, transparent); color: var(--error); }
+  .result-badge.not-verified { background: color-mix(in srgb, var(--text-faint) 14%, transparent); color: var(--text-faint); }
+
+  .result-badge.running {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+    animation: bdd-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes bdd-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .result-formula {
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    word-break: break-word;
+  }
+
+  .result-probability {
+    margin-top: 6px;
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+  }
+
+  .result-timing {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .result-error-text {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--error);
+    line-height: 1.4;
+  }
+
+  .result-retry-button {
+    margin-top: 9px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    border: 1px solid var(--error);
+    background: transparent;
+    color: var(--error);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .result-retry-button:hover {
+    background: color-mix(in srgb, var(--error) 14%, transparent);
+  }
+
+  .result-retry-button:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .result-card-error {
+    border-color: var(--error);
+  }
+
+  .diagnostic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .diagnostic-item {
+    display: flex;
+    gap: 9px;
+    padding: 9px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-soft);
+    background: var(--bg-panel);
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  .diagnostic-item .marker {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .diagnostic-item .marker.error { background: var(--error); }
+  .diagnostic-item .marker.warning { background: var(--warn); }
+  .diagnostic-item .marker.info { background: var(--text-faint); }
+
+  .diagnostic-item .location {
+    color: var(--text-faint);
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+    font-size: 11px;
+  }
+
+  .status-bar {
+    height: 26px;
+    min-height: 26px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-soft);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-family: "SF Mono", "IBM Plex Mono", monospace;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top-bar">
+    <div class="brand">
+      <div class="brand-mark">TA</div>
+      <div>
+        <div class="brand-title">BDD to Timed Automata Studio</div>
+        <div class="brand-subtitle">Cyber-Physical Systems verification workbench</div>
+      </div>
+    </div>
+    <div class="connection-status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-label">Connecting to language server</span>
+    </div>
+    <button class="theme-toggle" id="theme-toggle" title="Toggle light and dark theme" aria-label="Toggle theme">
+      <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+    </button>
+  </header>
+
+  <main class="workspace">
+    <section class="editor-column" id="editor-column">
+      <div class="editor-toolbar">
+        <span class="file-tag">generated.bdd</span>
+        <div class="editor-toolbar-right">
+          <div class="diagnostics-summary">
+            <span><span class="diag-count-dot error"></span><span id="error-count">0 errors</span></span>
+            <span><span class="diag-count-dot warning"></span><span id="warning-count">0 warnings</span></span>
+          </div>
+          <div class="font-size-controls">
+            <button type="button" class="font-size-btn" id="font-size-decrease" title="Decrease font size" aria-label="Decrease editor font size">−</button>
+            <button type="button" class="font-size-btn" id="font-size-increase" title="Increase font size" aria-label="Increase editor font size">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="tab-strip">
+        <button type="button" class="tab-button active" id="tab-declarations" data-tab="declarations">
+          <span class="tab-dot" id="tab-dot-declarations"></span>Declarations
+        </button>
+        <button type="button" class="tab-button" id="tab-scenarios" data-tab="scenarios">
+          <span class="tab-dot" id="tab-dot-scenarios"></span>Scenarios
+        </button>
+        <button type="button" class="tab-button" id="tab-requirements" data-tab="requirements">
+          <span class="tab-dot" id="tab-dot-requirements"></span>Requirements
+        </button>
+      </div>
+      <div id="monaco-container"></div>
+      <div class="status-bar">
+        <span id="editor-status-bar">Ln 1, Col 1</span>
+        <span id="save-indicator" style="margin-left: auto;"></span>
+      </div>
+    </section>
+
+    <div class="column-resizer" id="column-resizer"></div>
+
+    <section class="feedback-column">
+      <div class="actions-bar">
+        <button class="btn save-btn" id="save-button" title="Fix validation errors before saving" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          <span id="save-button-label">Save</span>
+        </button>
+        <button class="btn run-btn" id="run-button" title="Fix validation errors before running" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18l15-9L5 3Z"/></svg>
+          <span id="run-button-label">Run</span>
+        </button>
+      </div>
+      <div class="accuracy-row">
+        <div class="accuracy-field">
+          <label for="accuracy-precision">Precision</label>
+          <div class="accuracy-input-group">
+            <input type="number" id="accuracy-precision" min="0.1" max="25" step="0.1" value="5">
+            <span>%</span>
+          </div>
+        </div>
+        <div class="accuracy-field">
+          <label for="accuracy-confidence">Confidence</label>
+          <div class="accuracy-input-group">
+            <input type="number" id="accuracy-confidence" min="50" max="99.9" step="0.1" value="95">
+            <span>%</span>
+          </div>
+        </div>
+        <div class="accuracy-readout" id="accuracy-readout" title="Tighter accuracy needs more simulation runs, so it takes longer">
+          Probabilistic results accurate to ±5.0% at 95% confidence
+        </div>
+      </div>
+      <div class="save-status" id="save-status"></div>
+      <div class="save-status" id="run-status"></div>
+      <div class="feedback-body">
+        <p class="feedback-header">Query feedback</p>
+        <div class="empty-state" id="feedback-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <div class="empty-state-title">No requirements checked yet</div>
+          <div class="empty-state-copy">Run a requirement against the model to see UPPAAL verification results here.</div>
+        </div>
+        <div class="loading-state hidden" id="feedback-loading">
+          <div class="spinner"></div>
+          <div class="loading-text" id="feedback-loading-text">Running verifyta…</div>
+        </div>
+        <div class="error-state hidden" id="feedback-error"></div>
+        <div class="result-list hidden" id="feedback-results"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.js"></script>
+<script>
+(function () {
+  console.log("[bdd-lsp] build 2026-07-18-c (finishes-splitting fix)");
+
+  var STORAGE_KEYS = {
+    declarations: "bdd-studio-declarations",
+    scenarios: "bdd-studio-scenarios",
+    requirements: "bdd-studio-requirements"
+  };
+  var LEGACY_STORAGE_KEY = "bdd-studio-editor-content";
+
+  function splitCombinedSource(combinedText) {
+    var lines = combinedText.split("\n");
+    var buckets = { declarations: [], scenarios: [], requirements: [] };
+    var current = "declarations";
+
+    lines.forEach(function (line) {
+      var trimmed = line.trim();
+      if (/^scenario\s*:/i.test(trimmed)) {
+        current = "scenarios";
+      } else if (/^requirement\s*:/i.test(trimmed)) {
+        current = "requirements";
+      }
+      buckets[current].push(line);
+    });
+
+    return {
+      declarations: buckets.declarations.join("\n"),
+      scenarios: buckets.scenarios.join("\n"),
+      requirements: buckets.requirements.join("\n")
+    };
+  }
+
+  function loadPersistedSections() {
+    try {
+      var declarations = window.localStorage.getItem(STORAGE_KEYS.declarations);
+      var scenarios = window.localStorage.getItem(STORAGE_KEYS.scenarios);
+      var requirements = window.localStorage.getItem(STORAGE_KEYS.requirements);
+
+      if (declarations !== null || scenarios !== null || requirements !== null) {
+        return {
+          declarations: declarations || "",
+          scenarios: scenarios || "",
+          requirements: requirements || ""
+        };
+      }
+
+      var legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy !== null) {
+        return splitCombinedSource(legacy);
+      }
+
+      return null;
+    } catch (error) {
+      console.warn("[bdd-lsp] local storage unavailable, falling back to in-memory only", error);
+      return null;
+    }
+  }
+
+  function persistSections(sections) {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.declarations, sections.declarations);
+      window.localStorage.setItem(STORAGE_KEYS.scenarios, sections.scenarios);
+      window.localStorage.setItem(STORAGE_KEYS.requirements, sections.requirements);
+      updateSaveIndicator("saved");
+    } catch (error) {
+      console.warn("[bdd-lsp] could not persist editor content", error);
+      updateSaveIndicator("unavailable");
+    }
+  }
+
+  function updateSaveIndicator(state) {
+    var indicator = document.getElementById("save-indicator");
+    if (!indicator) return;
+
+    if (state === "saved") {
+      indicator.textContent = "Saved locally " + new Date().toLocaleTimeString();
+    } else if (state === "unavailable") {
+      indicator.textContent = "Local storage unavailable, changes will not persist";
+    }
+  }
+
+  var WS_HOST_PORT = "localhost:5008";
+  var LSP_URL = "ws://" + WS_HOST_PORT + "/bdd";
+  var GENERATE_URL = "ws://" + WS_HOST_PORT + "/generate";
+
+  // Local relay server the person runs alongside this page, since a browser
+  // page cannot spawn the verifyta process itself. Expected contract:
+  //   POST http://localhost:5010/run
+  //   body: { "uppaalXml": "<uppaal.xml text>", "queries": "<queries.q text>" }
+  //   the relay writes both to its own working directory as model.xml and
+  //   queries.q, runs `verifyta -s model.xml queries.q > results.txt`, and
+  //   should respond with any 2xx status once the process has been started.
+  //   The relay must also answer CORS preflight (OPTIONS) requests with
+  //   Access-Control-Allow-Origin, since this page may be opened as a local
+  //   file (Origin: null) or from a different origin than the relay.
+  var RELAY_URL = "http://localhost:5010/run";
+
+  // Must be an existing folder on the machine running the Xtext server,
+  // written as a proper Windows file URI with a drive letter, e.g.
+  // "file:///C:/Users/you/bdd-workspace". A bare "file:///workspace" is
+  // parsed by Java as a UNC path on Windows and will crash the server.
+  var LSP_ROOT_URI = "file:///C:/bdd-workspace";
+
+  var DOCUMENT_URI = "file:///generated.bdd";
+
+  var STARTER_DECLARATIONS = [
+    "model autonomous transport",
+    "",
+    "entity robot {",
+    "    states: patrolling transporting unloading overloaded",
+    "    properties: carried weight = 0",
+    "        direction = 0",
+    "        delivered objects = 0",
+    "}",
+    "",
+    "entity storage {",
+    "    states: ready",
+    "    properties: stored objects = 0",
+    "        total weight = 0",
+    "}"
+  ].join("\n");
+
+  var STARTER_SCENARIOS = [
+    "Scenario: transport object",
+    "    Given robot is patrolling",
+    "        And robot's carried weight is between 1 and 500",
+    "    When 1 seconds have passed",
+    "    Then robot is transporting",
+    "",
+    "Scenario: overloaded object",
+    "    Given robot is patrolling",
+    "        And robot's carried weight is greater than 500",
+    "    When 1 seconds have passed",
+    "    Then robot is overloaded",
+    "",
+    "Scenario: change direction",
+    "    Given robot is patrolling",
+    "        And robot's carried weight is 0",
+    "    Whenever 5 seconds have passed",
+    "    Then robot's direction is between 0 and 359",
+    "",
+    "Scenario: arrive at storage",
+    "    Given robot is transporting",
+    "    When 5 seconds have passed",
+    "    Then robot is unloading",
+    "",
+    "Scenario: unload object",
+    "    Given robot is unloading",
+    "    When 2 seconds have passed",
+    "    Then robot's direction is between 0 and 359",
+    "        And robot is patrolling",
+    "",
+    "Scenario: storage receives object",
+    "    Given storage is ready",
+    "        And robot is unloading",
+    "    When robot unloading finishes",
+    "    Then storage's stored objects is increased by 1",
+    "    And storage's total weight is increased by robot's carried weight",
+    "        And robot's carried weight is 0",
+    "        And robot's delivered objects is increased by 1"
+  ].join("\n");
+
+  var STARTER_REQUIREMENTS = [
+    "Requirement: overload possibility",
+    "    Given the system is running",
+    "    Check robot can eventually be overloaded",
+    "",
+    "Requirement: delivery likelihood",
+    "    Given the system is running",
+    "    Within 200 seconds",
+    "    Check robot's delivered objects can eventually be greater or equal to 5"
+  ].join("\n");
+
+  var THEME_ICONS = {
+    dark: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+    light: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>'
+  };
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.getElementById("theme-icon").innerHTML = THEME_ICONS[theme];
+  }
+
+  document.getElementById("theme-toggle").addEventListener("click", function () {
+    var current = document.documentElement.getAttribute("data-theme");
+    setTheme(current === "dark" ? "light" : "dark");
+  });
+
+  setTheme("dark");
+
+  (function () {
+    var resizer = document.getElementById("column-resizer");
+    var editorColumn = document.getElementById("editor-column");
+    var workspace = document.querySelector("main.workspace");
+    var dragging = false;
+
+    var EDITOR_MIN_WIDTH = 320;
+    var FEEDBACK_MIN_WIDTH = 280;
+
+    resizer.addEventListener("mousedown", function (event) {
+      dragging = true;
+      resizer.classList.add("dragging");
+      document.body.style.cursor = "col-resize";
+      event.preventDefault();
+    });
+
+    document.addEventListener("mousemove", function (event) {
+      if (!dragging) return;
+
+      var rect = workspace.getBoundingClientRect();
+      var newWidth = event.clientX - rect.left;
+      var maxWidth = rect.width - FEEDBACK_MIN_WIDTH - resizer.offsetWidth;
+      newWidth = Math.max(EDITOR_MIN_WIDTH, Math.min(maxWidth, newWidth));
+
+      editorColumn.style.flex = "0 0 " + newWidth + "px";
+    });
+
+    document.addEventListener("mouseup", function () {
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove("dragging");
+      document.body.style.cursor = "";
+    });
+  })();
+
+  var ARTICLES = { the: true, a: true, an: true };
+  var KEEP_THE_BEFORE = { system: true, maximum: true, minimum: true };
+
+  var PROTECTED_WORDS = {
+    model: true, entity: true, states: true, properties: true,
+    scenario: true, requirement: true,
+    given: true, when: true, then: true, check: true, within: true,
+    never: true, eventually: true, always: true, can: true, should: true, be: true,
+    is: true, not: true, in: true, between: true, and: true, or: true,
+    greater: true, less: true, than: true, equal: true, to: true,
+    increased: true, decreased: true, by: true,
+    whenever: true, have: true, passed: true, finishes: true,
+    maximum: true, minimum: true, system: true, running: true,
+    milliseconds: true, seconds: true, minutes: true, hours: true,
+    s: true, of: true,
+    is_not: true, is_greater_than: true, is_less_than: true,
+    is_greater_or_equal_to: true, is_less_or_equal_to: true
+  };
+
+  var TOKEN_PATTERN = /\d+(?:\.\d+)?|[a-z_][a-z0-9_]*|[{}:,=]|\S/gi;
+
+  var COLON_FUSED_KEYWORDS = { states: true, properties: true, scenario: true, requirement: true };
+
+  function fuseColonKeywords(output) {
+    var fused = [];
+    for (var i = 0; i < output.length; i++) {
+      if (COLON_FUSED_KEYWORDS[output[i]] && output[i + 1] === ":") {
+        fused.push(output[i] + ":");
+        i += 1;
+      } else {
+        fused.push(output[i]);
+      }
+    }
+    return fused;
+  }
+
+  function processStatesLine(lowered) {
+    var tokens = lowered.match(TOKEN_PATTERN) || [];
+    var output = tokens.filter(function (token) { return token !== ","; });
+    return fuseColonKeywords(output).join(" ");
+  }
+
+  function processLine(line) {
+    var lowered = line.toLowerCase()
+      .replace(/'/g, " ")
+      .replace(/(?<=[a-z])-(?=[a-z])/gi, " ");
+
+    if (/^\s*states\s*:/.test(lowered)) {
+      return processStatesLine(lowered);
+    }
+
+    var tokens = lowered.match(TOKEN_PATTERN) || [];
+    var output = [];
+    var nameBuffer = [];
+
+    function flushName() {
+      if (nameBuffer.length > 0) {
+        output.push(nameBuffer.join("_"));
+        nameBuffer = [];
+      }
+    }
+
+    var sawBetweenKeyword = false;
+
+    for (var i = 0; i < tokens.length; i++) {
+      var token = tokens[i];
+      var isWord = /^[a-z_][a-z0-9_]*$/.test(token);
+
+      if (isWord && ARTICLES[token]) {
+        var nextToken = tokens[i + 1];
+        if (token === "the" && KEEP_THE_BEFORE[nextToken]) {
+          flushName();
+          output.push(token);
+        }
+        continue;
+      }
+
+      if (token === ",") {
+        flushName();
+        if (sawBetweenKeyword) {
+          output.push(token);
+          sawBetweenKeyword = false;
+        }
+        continue;
+      }
+
+      if (isWord && !PROTECTED_WORDS[token]) {
+        nameBuffer.push(token);
+        continue;
+      }
+
+      flushName();
+      output.push(token);
+
+      if (token === "between") {
+        sawBetweenKeyword = true;
+      }
+    }
+
+    flushName();
+    return fuseColonKeywords(output).join(" ");
+  }
+
+  function buildEntityRegistry(text) {
+    var registry = {};
+    var entityBlockPattern = /entity\s+([a-z_][a-z0-9_]*)\s*\{([^}]*)\}/gi;
+    var match;
+
+    while ((match = entityBlockPattern.exec(text)) !== null) {
+      var entityName = match[1];
+      var blockBody = match[2];
+      var statesMatch = /states:\s*([\s\S]*?)(?=properties:|$)/i.exec(blockBody);
+      var states = statesMatch ? statesMatch[1].trim().split(/\s+/).filter(Boolean) : [];
+      registry[entityName] = states;
+    }
+
+    return registry;
+  }
+
+  function splitFinishesReferences(text, registry) {
+    var entityNames = Object.keys(registry).sort(function (a, b) { return b.length - a.length; });
+
+    return text.replace(/\b([a-z_][a-z0-9_]*)\s+finishes\b/gi, function (fullMatch, blob) {
+      for (var i = 0; i < entityNames.length; i++) {
+        var entityName = entityNames[i];
+        var prefix = entityName + "_";
+
+        if (blob.indexOf(prefix) === 0) {
+          var stateCandidate = blob.slice(prefix.length);
+          if (registry[entityName].indexOf(stateCandidate) !== -1) {
+            return entityName + " " + stateCandidate + " finishes";
+          }
+        }
+      }
+
+      return fullMatch;
+    });
+  }
+
+  function normalizeCheckClauses(text) {
+    return text.replace(/^check\s+(.*)$/gim, function (fullMatch, rest) {
+      var match = /^(.*?)\s+(can|should)\s+(eventually|always|never)\s+be\s+(.*)$/i.exec(rest);
+      if (!match) return fullMatch;
+
+      var refPart = match[1].trim();
+      var modality = match[2].toLowerCase();
+      var temporal = match[3].toLowerCase();
+      var condPart = match[4].trim();
+
+      var condWithIs = /^is\b/i.test(condPart) ? condPart : "is " + condPart;
+
+      return "check " + modality + " " + temporal + " be " + refPart + " " + condWithIs;
+    });
+  }
+
+  function preprocessForServer(rawText) {
+    var lineProcessed = rawText.split("\n").map(processLine).join("\n");
+    var withChecksNormalized = normalizeCheckClauses(lineProcessed);
+
+    var betweenPattern = /\bbetween\s+(\S+)\s+and\s+(\S+)\b/gi;
+    var withBetween = withChecksNormalized.replace(betweenPattern, "between $1 , $2");
+
+    var comparisonReplacements = [
+      [/(?<=\bs\s+\S+\s+)is\s+greater\s+or\s+equal\s+to\b/gi, "is_greater_or_equal_to"],
+      [/(?<=\bs\s+\S+\s+)is\s+less\s+or\s+equal\s+to\b/gi, "is_less_or_equal_to"],
+      [/(?<=\bs\s+\S+\s+)is\s+greater\s+than\b/gi, "is_greater_than"],
+      [/(?<=\bs\s+\S+\s+)is\s+less\s+than\b/gi, "is_less_than"],
+      [/(?<=\bs\s+\S+\s+)is\s+not\b/gi, "is_not"]
+    ];
+
+    var withComparisons = comparisonReplacements.reduce(function (text, pair) {
+      return text.replace(pair[0], pair[1]);
+    }, withBetween);
+
+    var registry = buildEntityRegistry(withComparisons);
+    return splitFinishesReferences(withComparisons, registry);
+  }
+
+  function BddLanguageClient(url, onDiagnostics, onStatusChange) {
+    this.url = url;
+    this.onDiagnostics = onDiagnostics;
+    this.onStatusChange = onStatusChange;
+    this.socket = null;
+    this.requestId = 0;
+    this.documentVersion = 0;
+    this.initialized = false;
+    this.documentOpened = false;
+    this.pendingText = null;
+  }
+
+  BddLanguageClient.prototype.connect = function () {
+    var self = this;
+    self.onStatusChange("connecting");
+    console.log("[bdd-lsp] connecting to", self.url);
+
+    try {
+      self.socket = new WebSocket(self.url);
+    } catch (error) {
+      console.error("[bdd-lsp] failed to construct WebSocket", error);
+      self.onStatusChange("error");
+      return;
+    }
+
+    self.socket.onopen = function () {
+      console.log("[bdd-lsp] socket open, sending initialize");
+      self.sendInitialize();
+    };
+
+    self.socket.onmessage = function (event) {
+      self.handleMessage(event.data);
+    };
+
+    self.socket.onclose = function (event) {
+      console.warn("[bdd-lsp] socket closed", { code: event.code, reason: event.reason, wasClean: event.wasClean });
+      self.initialized = false;
+      self.documentOpened = false;
+      self.onStatusChange("disconnected");
+      setTimeout(function () { self.connect(); }, 3000);
+    };
+
+    self.socket.onerror = function (event) {
+      console.error("[bdd-lsp] socket error", event);
+      self.onStatusChange("error");
+    };
+  };
+
+  BddLanguageClient.prototype.send = function (message) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      console.log("[bdd-lsp] ->", message.method || ("response " + message.id), message);
+      this.socket.send(JSON.stringify(message));
+    } else {
+      console.warn("[bdd-lsp] tried to send while socket not open", message);
+    }
+  };
+
+  BddLanguageClient.prototype.sendInitialize = function () {
+    this.requestId += 1;
+    this.send({
+      jsonrpc: "2.0",
+      id: this.requestId,
+      method: "initialize",
+      params: {
+        processId: null,
+        rootUri: LSP_ROOT_URI,
+        workspaceFolders: [{ uri: LSP_ROOT_URI, name: "workspace" }],
+        capabilities: {}
+      }
+    });
+  };
+
+  BddLanguageClient.prototype.handleMessage = function (raw) {
+    var message;
+    console.log("[bdd-lsp] <-", raw);
+    try {
+      message = JSON.parse(raw);
+    } catch (error) {
+      console.error("[bdd-lsp] could not parse message as JSON, server may be using Content-Length framing instead of bare JSON-RPC over the socket", raw);
+      return;
+    }
+
+    if (!this.initialized && message.id !== undefined && message.result !== undefined) {
+      this.initialized = true;
+      this.send({ jsonrpc: "2.0", method: "initialized", params: {} });
+      this.onStatusChange("connected");
+
+      if (this.pendingText !== null) {
+        var textToOpen = this.pendingText;
+        this.pendingText = null;
+        this.openDocument(textToOpen);
+      }
+      return;
+    }
+
+    if (message.error !== undefined) {
+      console.error("[bdd-lsp] server returned an error response", message.error);
+      this.onStatusChange("error");
+      return;
+    }
+
+    if (message.method === "textDocument/publishDiagnostics") {
+      this.onDiagnostics((message.params && message.params.diagnostics) || []);
+    }
+  };
+
+  BddLanguageClient.prototype.openDocument = function (text) {
+    if (!this.initialized) {
+      this.pendingText = text;
+      return;
+    }
+
+    this.documentVersion = 1;
+    this.documentOpened = true;
+    this.send({
+      jsonrpc: "2.0",
+      method: "textDocument/didOpen",
+      params: {
+        textDocument: {
+          uri: DOCUMENT_URI,
+          languageId: "bdd",
+          version: this.documentVersion,
+          text: text
+        }
+      }
+    });
+  };
+
+  BddLanguageClient.prototype.updateDocument = function (text) {
+    if (!this.initialized) {
+      this.pendingText = text;
+      return;
+    }
+
+    if (!this.documentOpened) {
+      this.openDocument(text);
+      return;
+    }
+
+    this.documentVersion += 1;
+    this.send({
+      jsonrpc: "2.0",
+      method: "textDocument/didChange",
+      params: {
+        textDocument: { uri: DOCUMENT_URI, version: this.documentVersion },
+        contentChanges: [{ text: text }]
+      }
+    });
+  };
+
+  var STATUS_LABELS = {
+    connecting: "Connecting to language server",
+    connected: "Connected to language server",
+    disconnected: "Disconnected, retrying",
+    error: "Connection error"
+  };
+
+  function onStatusChange(status) {
+    var dot = document.getElementById("status-dot");
+    var label = document.getElementById("status-label");
+    dot.className = "status-dot " + status;
+    label.textContent = STATUS_LABELS[status] || status;
+  }
+
+  var editor = null;
+  var editorFontSize = 13.5;
+  var declarationsModel = null;
+  var scenariosModel = null;
+  var requirementsModel = null;
+  var activeTabName = "declarations";
+  var currentOffsets = { declarations: 0, scenarios: 0, requirements: 0 };
+
+  function getSections() {
+    return {
+      declarations: declarationsModel.getValue(),
+      scenarios: scenariosModel.getValue(),
+      requirements: requirementsModel.getValue()
+    };
+  }
+
+  function getCombinedSourceWithOffsets() {
+    var sections = getSections();
+    var declarationsLineCount = sections.declarations.split("\n").length;
+    var scenariosLineCount = sections.scenarios.split("\n").length;
+
+    return {
+      combined: sections.declarations + "\n" + sections.scenarios + "\n" + sections.requirements,
+      offsets: {
+        declarations: 0,
+        scenarios: declarationsLineCount,
+        requirements: declarationsLineCount + scenariosLineCount
+      }
+    };
+  }
+
+  function getCombinedSource() {
+    return getCombinedSourceWithOffsets().combined;
+  }
+
+  function sectionForLine(line) {
+    if (line < currentOffsets.scenarios) return "declarations";
+    if (line < currentOffsets.requirements) return "scenarios";
+    return "requirements";
+  }
+
+  function switchTab(tabName) {
+    var modelMap = { declarations: declarationsModel, scenarios: scenariosModel, requirements: requirementsModel };
+    if (!modelMap[tabName]) return;
+
+    activeTabName = tabName;
+    editor.setModel(modelMap[tabName]);
+
+    ["declarations", "scenarios", "requirements"].forEach(function (name) {
+      var button = document.getElementById("tab-" + name);
+      if (!button) return;
+      if (name === activeTabName) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
+      }
+    });
+
+    editor.focus();
+  }
+
+  ["declarations", "scenarios", "requirements"].forEach(function (name) {
+    var button = document.getElementById("tab-" + name);
+    if (button) {
+      button.addEventListener("click", function () { switchTab(name); });
+    }
+  });
+  var debounceHandle = null;
+
+  function onDiagnostics(diagnostics) {
+    if (!editor || !window.monaco) return;
+
+    var sectionDiagnostics = { declarations: [], scenarios: [], requirements: [] };
+
+    diagnostics.forEach(function (diagnostic) {
+      var section = sectionForLine(diagnostic.range.start.line);
+      var offset = currentOffsets[section];
+      sectionDiagnostics[section].push({
+        range: {
+          start: { line: diagnostic.range.start.line - offset, character: diagnostic.range.start.character },
+          end: { line: diagnostic.range.end.line - offset, character: diagnostic.range.end.character }
+        },
+        message: diagnostic.message,
+        severity: diagnostic.severity
+      });
+    });
+
+    var models = { declarations: declarationsModel, scenarios: scenariosModel, requirements: requirementsModel };
+
+    Object.keys(sectionDiagnostics).forEach(function (section) {
+      var sectionMarkers = sectionDiagnostics[section].map(function (diagnostic) {
+        return {
+          startLineNumber: diagnostic.range.start.line + 1,
+          startColumn: diagnostic.range.start.character + 1,
+          endLineNumber: diagnostic.range.end.line + 1,
+          endColumn: diagnostic.range.end.character + 1,
+          message: diagnostic.message,
+          severity: mapSeverity(diagnostic.severity)
+        };
+      });
+
+      monaco.editor.setModelMarkers(models[section], "bdd-lsp", sectionMarkers);
+      updateTabDot(section, sectionDiagnostics[section]);
+    });
+
+    renderDiagnosticsPanel(diagnostics);
+  }
+
+  function updateTabDot(section, sectionDiagnosticsList) {
+    var dot = document.getElementById("tab-dot-" + section);
+    if (!dot) return;
+
+    var hasError = sectionDiagnosticsList.some(function (d) { return d.severity === 1; });
+    var hasWarning = sectionDiagnosticsList.some(function (d) { return d.severity === 2; });
+
+    dot.className = "tab-dot" + (hasError ? " error" : hasWarning ? " warning" : "");
+  }
+
+  function mapSeverity(severity) {
+    switch (severity) {
+      case 1: return monaco.MarkerSeverity.Error;
+      case 2: return monaco.MarkerSeverity.Warning;
+      case 3: return monaco.MarkerSeverity.Info;
+      default: return monaco.MarkerSeverity.Hint;
+    }
+  }
+
+  function severityLabel(severity) {
+    switch (severity) {
+      case 1: return "error";
+      case 2: return "warning";
+      default: return "info";
+    }
+  }
+
+  var currentErrorCount = 0;
+  var lastModelFolderHandle = null;
+  var runInProgress = false;
+
+  function renderDiagnosticsPanel(diagnostics) {
+    var errorCount = diagnostics.filter(function (d) { return d.severity === 1; }).length;
+    var warningCount = diagnostics.filter(function (d) { return d.severity === 2; }).length;
+
+    document.getElementById("error-count").textContent = errorCount + (errorCount === 1 ? " error" : " errors");
+    document.getElementById("warning-count").textContent = warningCount + (warningCount === 1 ? " warning" : " warnings");
+
+    currentErrorCount = errorCount;
+    updateSaveButtonState();
+    updateRunButtonState();
+  }
+
+  function updateSaveButtonState() {
+    var saveButton = document.getElementById("save-button");
+    if (!saveButton || saveButton.dataset.busy === "true") return;
+
+    saveButton.disabled = currentErrorCount > 0;
+    saveButton.title = currentErrorCount > 0
+      ? "Fix validation errors before saving"
+      : "Generate and save the concrete, abstract, and UPPAAL model files";
+  }
+
+  function updateRunButtonState() {
+    var runButton = document.getElementById("run-button");
+    if (!runButton || runButton.dataset.busy === "true") return;
+
+    runButton.disabled = currentErrorCount > 0;
+    runButton.title = currentErrorCount > 0
+      ? "Fix validation errors before running"
+      : "Extract queries and trigger verifyta via the local relay server";
+  }
+
+  var client = new BddLanguageClient(LSP_URL, onDiagnostics, onStatusChange);
+
+  function scheduleValidation() {
+    if (debounceHandle) {
+      clearTimeout(debounceHandle);
+    }
+    debounceHandle = setTimeout(function () {
+      var combinedInfo = getCombinedSourceWithOffsets();
+      currentOffsets = combinedInfo.offsets;
+      var processedText = preprocessForServer(combinedInfo.combined);
+      client.updateDocument(processedText);
+    }, 400);
+  }
+
+  var persistDebounceHandle = null;
+
+  function schedulePersist() {
+    if (persistDebounceHandle) {
+      clearTimeout(persistDebounceHandle);
+    }
+    persistDebounceHandle = setTimeout(function () {
+      persistSections(getSections());
+    }, 500);
+  }
+
+  var previewDebounceHandle = null;
+
+  function schedulePreviewGeneration() {
+    if (previewDebounceHandle) {
+      clearTimeout(previewDebounceHandle);
+    }
+    previewDebounceHandle = setTimeout(runPreviewGeneration, 900);
+  }
+
+  async function runPreviewGeneration() {
+    if (runInProgress) return;
+
+    if (currentErrorCount > 0) {
+      showFeedbackEmptyState();
+      return;
+    }
+
+    try {
+      var processedText = preprocessForServer(getCombinedSource());
+      var response = await generateArtifacts(processedText);
+
+      if (runInProgress) return;
+
+      if (response.errors && response.errors.length > 0) {
+        showFeedbackEmptyState();
+        return;
+      }
+
+      var queries = extractQueries(response.uppaalXml);
+
+      if (queries.length === 0) {
+        showFeedbackEmptyState();
+        return;
+      }
+
+      renderQueryPreview(queries);
+    } catch (error) {
+      console.warn("[bdd-preview] failed", error);
+    }
+  }
+
+  function generateArtifacts(processedText) {
+    return new Promise(function (resolve, reject) {
+      var socket;
+      try {
+        socket = new WebSocket(GENERATE_URL);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      var settled = false;
+
+      socket.onopen = function () {
+        socket.send(processedText);
+      };
+
+      socket.onmessage = function (event) {
+        settled = true;
+        try {
+          resolve(JSON.parse(event.data));
+        } catch (error) {
+          reject(new Error("Could not parse the /generate response as JSON"));
+        }
+        socket.close();
+      };
+
+      socket.onerror = function () {
+        if (!settled) {
+          reject(new Error("WebSocket error while contacting /generate"));
+        }
+      };
+
+      socket.onclose = function () {
+        if (!settled) {
+          reject(new Error("Connection to /generate closed before a response was received"));
+        }
+      };
+    });
+  }
+
+  async function writeTextFile(directoryHandle, fileName, content) {
+    var fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+    var writable = await fileHandle.createWritable();
+    await writable.write(content || "");
+    await writable.close();
+  }
+
+  function extractModelName(processedText) {
+    var match = /^model\s+([a-z_][a-z0-9_]*)/im.exec(processedText);
+    return match ? match[1] : null;
+  }
+
+  function setSaveStatus(kind, message) {
+    var statusLine = document.getElementById("save-status");
+    statusLine.className = "save-status " + kind;
+    statusLine.textContent = message;
+  }
+
+  function clearSaveStatus() {
+    var statusLine = document.getElementById("save-status");
+    statusLine.className = "save-status";
+    statusLine.textContent = "";
+  }
+
+  function setRunStatus(kind, message) {
+    var statusLine = document.getElementById("run-status");
+    statusLine.className = "save-status " + kind;
+    statusLine.textContent = message;
+  }
+
+  function clearRunStatus() {
+    var statusLine = document.getElementById("run-status");
+    statusLine.className = "save-status";
+    statusLine.textContent = "";
+  }
+
+  function setSaveButtonBusy(busy, label) {
+    var saveButton = document.getElementById("save-button");
+    var saveButtonLabel = document.getElementById("save-button-label");
+    saveButton.dataset.busy = busy ? "true" : "false";
+    saveButton.disabled = busy || currentErrorCount > 0;
+    saveButtonLabel.textContent = busy ? label : "Save";
+  }
+
+  function setRunButtonBusy(busy, label) {
+    var runButton = document.getElementById("run-button");
+    var runButtonLabel = document.getElementById("run-button-label");
+    runButton.dataset.busy = busy ? "true" : "false";
+    runButton.disabled = busy || currentErrorCount > 0;
+    runButtonLabel.textContent = busy ? label : "Run";
+  }
+
+  async function performSaveFlow() {
+    if (currentErrorCount > 0) {
+      return { success: false, reason: "errors" };
+    }
+
+    if (!window.showDirectoryPicker) {
+      setSaveStatus("error", "Saving needs a Chromium based browser (Chrome or Edge) with File System Access support.");
+      return { success: false, reason: "unsupported" };
+    }
+
+    var concreteText = getCombinedSource();
+    var processedText = preprocessForServer(concreteText);
+    var modelName = extractModelName(processedText);
+
+    if (!modelName) {
+      setSaveStatus("error", "Could not find a 'model <name>' declaration in the editor to use as the save folder name.");
+      return { success: false, reason: "no-model-name" };
+    }
+
+    var folderHandle;
+    try {
+      folderHandle = await window.showDirectoryPicker();
+    } catch (error) {
+      return { success: false, reason: "cancelled" };
+    }
+
+    clearSaveStatus();
+    setSaveButtonBusy(true, "Generating…");
+
+    try {
+      var response = await generateArtifacts(processedText);
+
+      if (response.errors && response.errors.length > 0) {
+        setSaveStatus("error", "The server reported errors: " + response.errors.join("; "));
+        return { success: false, reason: "generate-errors" };
+      }
+
+      setSaveButtonBusy(true, "Writing files…");
+      var modelFolderHandle = await folderHandle.getDirectoryHandle(modelName, { create: true });
+
+      await writeTextFile(modelFolderHandle, "concrete.txt", concreteText);
+      await writeTextFile(modelFolderHandle, "abstract.txt", response.abstractSyntax);
+      await writeTextFile(modelFolderHandle, "uppaal.xml", response.uppaalXml);
+
+      lastModelFolderHandle = modelFolderHandle;
+      setSaveStatus("success", "Saved " + modelName + "/concrete.txt, abstract.txt, uppaal.xml");
+
+      return {
+        success: true,
+        modelFolderHandle: modelFolderHandle,
+        uppaalXmlText: response.uppaalXml,
+        modelName: modelName
+      };
+    } catch (error) {
+      console.error("[bdd-save] failed", error);
+      setSaveStatus("error", "Save failed: " + error.message);
+      return { success: false, reason: "error", error: error };
+    } finally {
+      setSaveButtonBusy(false);
+      updateSaveButtonState();
+    }
+  }
+
+  async function handleSaveClick() {
+    await performSaveFlow();
+  }
+
+  function extractQueries(uppaalXmlText) {
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(uppaalXmlText, "application/xml");
+
+    if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+      throw new Error("uppaal.xml is not well formed XML");
+    }
+
+    var queryNodes = xmlDoc.querySelectorAll("queries > query");
+    var queries = [];
+
+    queryNodes.forEach(function (node) {
+      var formulaNode = node.querySelector("formula");
+      var commentNode = node.querySelector("comment");
+      queries.push({
+        formula: formulaNode ? formulaNode.textContent.trim() : "",
+        label: commentNode ? commentNode.textContent.trim() : null
+      });
+    });
+
+    return queries;
+  }
+
+  function parseProbabilityInfo(line) {
+    var match = /\(([^)]*runs)\)\s*Pr\([^)]*\)\s*in\s*\[\s*([^,]+),\s*([^\]]+)\]\s*\(([^)]+)\)/.exec(line);
+    if (!match) return null;
+
+    var low = parseFloat(match[2]);
+    var high = parseFloat(match[3]);
+    if (isNaN(low) || isNaN(high)) return null;
+
+    return {
+      runsLabel: match[1].trim(),
+      lowPercent: low * 100,
+      highPercent: high * 100,
+      ciLabel: match[4].trim()
+    };
+  }
+
+  function parseExtremumInfo(line, valuesLine) {
+    var match = /\((\d+)\s*runs\)\s*E\((max|min)\)\s*=\s*\u2248?\s*([\d.eE+-]+)/i.exec(line);
+    if (!match) return null;
+
+    var info = {
+      runsLabel: match[1] + " runs",
+      kind: match[2].toLowerCase(),
+      value: match[3]
+    };
+
+    if (valuesLine) {
+      var valuesMatch = /Values in \[([^\]]+)\]\s*mean\s*=\s*([\d.eE+-]+)\s*steps\s*=\s*(\d+)/i.exec(valuesLine);
+      if (valuesMatch) {
+        info.range = valuesMatch[1];
+        info.mean = valuesMatch[2];
+        info.steps = valuesMatch[3];
+      }
+    }
+
+    return info;
+  }
+
+  function parseVerifytaResults(resultsText, queries) {
+    var blocks = resultsText.split(/(?=Verifying formula \d+ at)/);
+    var results = [];
+
+    blocks.forEach(function (block) {
+      var headerMatch = /Verifying formula (\d+) at/.exec(block);
+      if (!headerMatch) return;
+
+      var index = parseInt(headerMatch[1], 10) - 1;
+      var lines = block.split("\n").slice(1).map(function (line) {
+        return line.trim();
+      }).filter(Boolean);
+
+      var probabilityLine = lines.find(function (line) {
+        return /Pr\(.*\)\s*in\s*\[/.test(line);
+      });
+
+      var extremumLine = lines.find(function (line) {
+        return /E\((max|min)\)/i.test(line);
+      });
+
+      var valuesLine = lines.find(function (line) {
+        return /^Values in \[/i.test(line);
+      });
+
+      var status;
+      var probabilityInfo = null;
+      var extremumInfo = null;
+
+      if (extremumLine) {
+        status = "extremum";
+        extremumInfo = parseExtremumInfo(extremumLine, valuesLine);
+      } else if (probabilityLine) {
+        status = "probabilistic";
+        probabilityInfo = parseProbabilityInfo(probabilityLine);
+      } else if (lines.some(function (line) { return /not satisfied/i.test(line); })) {
+        status = "not-satisfied";
+      } else if (lines.some(function (line) { return /is satisfied/i.test(line); })) {
+        status = "satisfied";
+      } else {
+        status = "unknown";
+      }
+
+      var query = queries[index] || {};
+
+      results.push({
+        label: query.label || ("Query " + (index + 1)),
+        formula: query.formula || "",
+        status: status,
+        probabilityLine: probabilityLine || null,
+        probabilityInfo: probabilityInfo,
+        extremumInfo: extremumInfo
+      });
+    });
+
+    return results;
+  }
+
+  function formatRequirementLabel(label) {
+    return label
+      .split("_")
+      .map(function (word) { return word.charAt(0).toUpperCase() + word.slice(1); })
+      .join(" ");
+  }
+
+  function formatPercent(value) {
+    return (Math.round(value * 100) / 100) + "%";
+  }
+
+  function badgeText(result) {
+    switch (result.status) {
+      case "satisfied": return "Satisfied";
+      case "not-satisfied": return "Not satisfied";
+      case "probabilistic":
+        return result.probabilityInfo
+          ? formatPercent(result.probabilityInfo.lowPercent) + " – " + formatPercent(result.probabilityInfo.highPercent)
+          : "Estimated";
+      case "extremum":
+        return result.extremumInfo
+          ? (result.extremumInfo.kind === "max" ? "Max \u2248 " : "Min \u2248 ") + result.extremumInfo.value
+          : "Computed";
+      case "error": return "Error";
+      case "not-verified": return "Not verified yet";
+      case "running": return "Running…";
+      default: return "Unknown";
+    }
+  }
+
+  function showFeedbackEmptyState() {
+    currentQueries = [];
+    queryCardElements = [];
+    document.getElementById("feedback-loading").classList.add("hidden");
+    document.getElementById("feedback-error").classList.add("hidden");
+    document.getElementById("feedback-results").classList.add("hidden");
+    document.getElementById("feedback-empty-state").classList.remove("hidden");
+  }
+
+  function showFeedbackLoading(message) {
+    document.getElementById("feedback-empty-state").classList.add("hidden");
+    document.getElementById("feedback-error").classList.add("hidden");
+    document.getElementById("feedback-results").classList.add("hidden");
+    document.getElementById("feedback-loading-text").textContent = message;
+    document.getElementById("feedback-loading").classList.remove("hidden");
+  }
+
+  function showFeedbackError(message) {
+    document.getElementById("feedback-empty-state").classList.add("hidden");
+    document.getElementById("feedback-loading").classList.add("hidden");
+    document.getElementById("feedback-results").classList.add("hidden");
+    var errorBox = document.getElementById("feedback-error");
+    errorBox.textContent = message;
+    errorBox.classList.remove("hidden");
+  }
+
+  function buildResultCard(result, index, generation) {
+    var card = document.createElement("div");
+    card.className = "result-card" + (result.status === "error" ? " result-card-error" : "");
+
+    var header = document.createElement("div");
+    header.className = "result-header";
+
+    var title = document.createElement("div");
+    title.className = "result-title";
+    title.textContent = formatRequirementLabel(result.label);
+
+    var badge = document.createElement("span");
+    badge.className = "result-badge " + result.status;
+    badge.textContent = badgeText(result);
+
+    header.appendChild(title);
+    header.appendChild(badge);
+    card.appendChild(header);
+
+    var formula = document.createElement("div");
+    formula.className = "result-formula";
+    formula.textContent = result.formula;
+    card.appendChild(formula);
+
+    if (result.status === "probabilistic") {
+      var detail = document.createElement("div");
+      detail.className = "result-probability";
+      detail.textContent = result.probabilityInfo
+        ? "(" + result.probabilityInfo.ciLabel + ", " + result.probabilityInfo.runsLabel + ")"
+        : result.probabilityLine;
+      card.appendChild(detail);
+    }
+
+    if (result.status === "extremum" && result.extremumInfo) {
+      var extremumDetail = document.createElement("div");
+      extremumDetail.className = "result-probability";
+      var parts = [];
+      if (result.extremumInfo.range) parts.push("range [" + result.extremumInfo.range + "]");
+      if (result.extremumInfo.mean) parts.push("mean " + result.extremumInfo.mean);
+      parts.push(result.extremumInfo.runsLabel);
+      extremumDetail.textContent = "(" + parts.join(", ") + ")";
+      card.appendChild(extremumDetail);
+    }
+
+    if (result.status === "error") {
+      var errorText = document.createElement("div");
+      errorText.className = "result-error-text";
+      errorText.textContent = result.errorMessage;
+      card.appendChild(errorText);
+
+      var retryButton = document.createElement("button");
+      retryButton.type = "button";
+      retryButton.className = "result-retry-button";
+      retryButton.textContent = "Retry";
+      retryButton.dataset.retryIndex = String(index);
+      retryButton.dataset.retryGeneration = String(generation);
+      card.appendChild(retryButton);
+    }
+
+    if (typeof result.elapsedSeconds === "number") {
+      var timing = document.createElement("div");
+      timing.className = "result-timing";
+      timing.textContent = result.elapsedSeconds.toFixed(2) + "s";
+      card.appendChild(timing);
+    }
+
+    return card;
+  }
+
+  var currentQueries = [];
+  var queryCardElements = [];
+
+  var resultsGeneration = 0;
+  var lastRunUppaalXml = null;
+
+  function renderQueryPreview(queries) {
+    currentQueries = queries;
+    resultsGeneration += 1;
+    var generation = resultsGeneration;
+
+    document.getElementById("feedback-empty-state").classList.add("hidden");
+    document.getElementById("feedback-loading").classList.add("hidden");
+    document.getElementById("feedback-error").classList.add("hidden");
+
+    var container = document.getElementById("feedback-results");
+    container.innerHTML = "";
+    queryCardElements = [];
+
+    queries.forEach(function (query, index) {
+      var card = buildResultCard({ label: query.label, formula: query.formula, status: "not-verified" }, index, generation);
+      container.appendChild(card);
+      queryCardElements.push(card);
+    });
+
+    container.classList.remove("hidden");
+    return generation;
+  }
+
+  function updateQueryCard(index, result, generation) {
+    var newCard = buildResultCard(result, index, generation);
+    var oldCard = queryCardElements[index];
+
+    if (oldCard && oldCard.parentNode) {
+      oldCard.parentNode.replaceChild(newCard, oldCard);
+    }
+
+    queryCardElements[index] = newCard;
+  }
+
+  async function retryQuery(index, generation, buttonElement) {
+    if (generation !== resultsGeneration || !lastRunUppaalXml || !currentQueries[index]) {
+      if (buttonElement) {
+        buttonElement.textContent = "Model changed — click Run";
+        buttonElement.disabled = true;
+      }
+      return;
+    }
+
+    var query = currentQueries[index];
+    var accuracySettings = getAccuracySettings();
+
+    updateQueryCard(index, { label: query.label, formula: query.formula, status: "running" }, generation);
+
+    try {
+      var relayResponse = await runSingleQueryViaRelay(lastRunUppaalXml, query.formula, accuracySettings);
+      var parsed = parseVerifytaResults(relayResponse.resultsText, [query]);
+      var result = parsed[0] || { label: query.label, formula: query.formula, status: "unknown" };
+      result.elapsedSeconds = relayResponse.elapsedSeconds;
+      updateQueryCard(index, result, generation);
+    } catch (error) {
+      console.error("[bdd-run] retry of query " + (index + 1) + " failed", error);
+      updateQueryCard(index, {
+        label: query.label || ("Query " + (index + 1)),
+        formula: query.formula,
+        status: "error",
+        errorMessage: error.message
+      }, generation);
+    }
+  }
+
+  document.getElementById("feedback-results").addEventListener("click", function (event) {
+    var button = event.target.closest(".result-retry-button");
+    if (!button) return;
+
+    var index = parseInt(button.dataset.retryIndex, 10);
+    var generation = parseInt(button.dataset.retryGeneration, 10);
+    retryQuery(index, generation, button);
+  });
+
+  function clampNumber(value, min, max, fallback) {
+    if (isNaN(value)) return fallback;
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function getAccuracySettings() {
+    var precisionInput = document.getElementById("accuracy-precision");
+    var confidenceInput = document.getElementById("accuracy-confidence");
+
+    var precisionPercent = clampNumber(parseFloat(precisionInput.value), 0.1, 25, 5);
+    var confidencePercent = clampNumber(parseFloat(confidenceInput.value), 50, 99.9, 95);
+
+    return {
+      epsilon: precisionPercent / 100,
+      alpha: 1 - (confidencePercent / 100),
+      precisionPercent: precisionPercent,
+      confidencePercent: confidencePercent
+    };
+  }
+
+  function updateAccuracyReadout() {
+    var settings = getAccuracySettings();
+    document.getElementById("accuracy-readout").textContent =
+      "Probabilistic results accurate to \u00B1" + settings.precisionPercent.toFixed(1) +
+      "% at " + settings.confidencePercent.toFixed(1) + "% confidence";
+  }
+
+  document.getElementById("accuracy-precision").addEventListener("input", updateAccuracyReadout);
+  document.getElementById("accuracy-confidence").addEventListener("input", updateAccuracyReadout);
+  updateAccuracyReadout();
+
+  async function runSingleQueryViaRelay(uppaalXmlText, formulaText, accuracySettings) {
+    var response = await fetch(RELAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uppaalXml: uppaalXmlText,
+        queries: formulaText + "\n",
+        epsilon: accuracySettings.epsilon,
+        alpha: accuracySettings.alpha
+      })
+    });
+
+    var responseBody = await response.json().catch(function () { return null; });
+
+    if (!response.ok) {
+      var message = responseBody && responseBody.error ? responseBody.error : ("HTTP " + response.status);
+      throw new Error("Relay server error: " + message);
+    }
+
+    if (!responseBody || !responseBody.resultsText) {
+      throw new Error("Relay server did not return any results text");
+    }
+
+    return responseBody;
+  }
+
+  async function handleRunClick() {
+    if (currentErrorCount > 0) return;
+
+    runInProgress = true;
+    clearRunStatus();
+    showFeedbackLoading("Saving latest model…");
+    setRunButtonBusy(true, "Saving latest model…");
+
+    var saveResult = await performSaveFlow();
+
+    if (!saveResult.success) {
+      setRunButtonBusy(false);
+      updateRunButtonState();
+      runInProgress = false;
+      if (saveResult.reason === "cancelled") {
+        showFeedbackEmptyState();
+      } else {
+        setRunStatus("error", "Could not save the latest model, see the message above.");
+        showFeedbackError("Could not save the latest model. See the message above the panel.");
+      }
+      return;
+    }
+
+    var queries;
+    try {
+      queries = extractQueries(saveResult.uppaalXmlText);
+    } catch (error) {
+      setRunButtonBusy(false);
+      updateRunButtonState();
+      runInProgress = false;
+      setRunStatus("error", "Run failed: " + error.message);
+      showFeedbackError("Run failed: " + error.message);
+      return;
+    }
+
+    if (queries.length === 0) {
+      setRunButtonBusy(false);
+      updateRunButtonState();
+      runInProgress = false;
+      setRunStatus("error", "No <queries> found in uppaal.xml.");
+      showFeedbackError("No <queries> found in uppaal.xml.");
+      return;
+    }
+
+    var queriesText = queries.map(function (query) { return query.formula; }).join("\n") + "\n";
+
+    setRunButtonBusy(true, "Writing queries.q…");
+    showFeedbackLoading("Writing queries.q…");
+
+    try {
+      await writeTextFile(saveResult.modelFolderHandle, "queries.q", queriesText);
+    } catch (error) {
+      setRunButtonBusy(false);
+      updateRunButtonState();
+      runInProgress = false;
+      setRunStatus("error", "Run failed: " + error.message);
+      showFeedbackError("Run failed: " + error.message);
+      return;
+    }
+
+    var runGeneration = renderQueryPreview(queries);
+    lastRunUppaalXml = saveResult.uppaalXmlText;
+
+    var accuracySettings = getAccuracySettings();
+    var completedCount = 0;
+    var failedCount = 0;
+
+    for (var i = 0; i < queries.length; i++) {
+      var query = queries[i];
+      var progressText = "Running query " + (i + 1) + " of " + queries.length + "…";
+      setRunButtonBusy(true, progressText);
+      updateQueryCard(i, { label: query.label, formula: query.formula, status: "running" }, runGeneration);
+
+      try {
+        var relayResponse = await runSingleQueryViaRelay(saveResult.uppaalXmlText, query.formula, accuracySettings);
+        var parsed = parseVerifytaResults(relayResponse.resultsText, [query]);
+        var result = parsed[0] || { label: query.label, formula: query.formula, status: "unknown" };
+        result.elapsedSeconds = relayResponse.elapsedSeconds;
+        updateQueryCard(i, result, runGeneration);
+        completedCount += 1;
+      } catch (error) {
+        console.error("[bdd-run] query " + (i + 1) + " failed", error);
+        updateQueryCard(i, {
+          label: query.label || ("Query " + (i + 1)),
+          formula: query.formula,
+          status: "error",
+          errorMessage: error.message
+        }, runGeneration);
+        failedCount += 1;
+      }
+    }
+
+    setRunButtonBusy(false);
+    updateRunButtonState();
+    runInProgress = false;
+
+    if (failedCount === 0) {
+      setRunStatus("success", "Verification complete: " + completedCount + " " +
+        (completedCount === 1 ? "requirement" : "requirements") + " checked.");
+    } else {
+      setRunStatus("error", completedCount + " succeeded, " + failedCount + " failed. See the panel for details.");
+    }
+  }
+
+  document.getElementById("save-button").addEventListener("click", handleSaveClick);
+  document.getElementById("run-button").addEventListener("click", handleRunClick);
+
+  require.config({ paths: { vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs" } });
+
+  require(["vs/editor/editor.main"], function () {
+    monaco.languages.register({ id: "bdd" });
+
+    monaco.languages.setMonarchTokensProvider("bdd", {
+      defaultToken: "",
+      tokenPostfix: ".bdd",
+      keywords: ["model", "entity", "scenario", "requirement"],
+      declarationKeywords: ["states", "properties"],
+      controlKeywords: ["given", "when", "then", "check", "within", "never", "eventually"],
+      operatorKeywords: ["is", "not", "in", "between", "and", "or", "greater", "less", "than", "equal", "to", "increased", "decreased", "by"],
+      eventKeywords: ["whenever", "have", "passed", "finishes"],
+      articles: ["the", "a", "an"],
+      timeUnits: ["milliseconds", "seconds", "minutes", "hours"],
+      tokenizer: {
+        root: [
+          [/\d+(\.\d+)?/, "number"],
+          [/[a-zA-Z_][\w]*/, {
+            cases: {
+              "@keywords": "keyword",
+              "@declarationKeywords": "keyword.declaration",
+              "@controlKeywords": "keyword.control",
+              "@operatorKeywords": "keyword.operator",
+              "@eventKeywords": "keyword.event",
+              "@articles": "keyword.article",
+              "@timeUnits": "type",
+              "@default": "identifier"
+            }
+          }],
+          [/'/, "delimiter"],
+          [/[{}]/, "@brackets"],
+          [/[:,=]/, "delimiter"],
+          [/\s+/, "white"]
+        ]
+      }
+    });
+
+    monaco.editor.defineTheme("bdd-light", {
+      base: "vs",
+      inherit: true,
+      rules: [
+        { token: "keyword", foreground: "b9761f", fontStyle: "bold" },
+        { token: "keyword.declaration", foreground: "b9761f" },
+        { token: "keyword.control", foreground: "2f6a91", fontStyle: "bold" },
+        { token: "keyword.operator", foreground: "6a4fa6" },
+        { token: "keyword.event", foreground: "2f6a91" },
+        { token: "keyword.article", foreground: "8a92a0", fontStyle: "italic" },
+        { token: "type", foreground: "2f8f57" },
+        { token: "number", foreground: "2f8f57" },
+        { token: "identifier", foreground: "1c2128" },
+        { token: "delimiter", foreground: "57616f" }
+      ],
+      colors: {
+        "editor.background": "#ffffff",
+        "editor.foreground": "#1c2128",
+        "editorLineNumber.foreground": "#c3c8bd",
+        "editorLineNumber.activeForeground": "#57616f",
+        "editor.lineHighlightBackground": "#f2f2ee",
+        "editorCursor.foreground": "#b9761f",
+        "editorIndentGuide.background": "#e5e7e0"
+      }
+    });
+
+    var persistedSections = loadPersistedSections();
+
+    declarationsModel = monaco.editor.createModel(
+      (persistedSections && persistedSections.declarations) || STARTER_DECLARATIONS,
+      "bdd",
+      monaco.Uri.parse("inmemory://model/declarations.bdd")
+    );
+    scenariosModel = monaco.editor.createModel(
+      (persistedSections && persistedSections.scenarios) || STARTER_SCENARIOS,
+      "bdd",
+      monaco.Uri.parse("inmemory://model/scenarios.bdd")
+    );
+    requirementsModel = monaco.editor.createModel(
+      (persistedSections && persistedSections.requirements) || STARTER_REQUIREMENTS,
+      "bdd",
+      monaco.Uri.parse("inmemory://model/requirements.bdd")
+    );
+
+    editor = monaco.editor.create(document.getElementById("monaco-container"), {
+      model: declarationsModel,
+      theme: "bdd-light",
+      fontSize: editorFontSize,
+      fontFamily: "SF Mono, 'IBM Plex Mono', Menlo, monospace",
+      minimap: { enabled: false },
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      renderLineHighlight: "line",
+      padding: { top: 14 }
+    });
+
+    function setEditorFontSize(size) {
+      editorFontSize = Math.max(9, Math.min(28, size));
+      editor.updateOptions({ fontSize: editorFontSize });
+    }
+
+    document.getElementById("font-size-decrease").addEventListener("click", function () {
+      setEditorFontSize(editorFontSize - 1);
+    });
+
+    document.getElementById("font-size-increase").addEventListener("click", function () {
+      setEditorFontSize(editorFontSize + 1);
+    });
+
+    editor.onDidChangeCursorPosition(function (event) {
+      document.getElementById("editor-status-bar").textContent =
+        "Ln " + event.position.lineNumber + ", Col " + event.position.column;
+    });
+
+    [declarationsModel, scenariosModel, requirementsModel].forEach(function (model) {
+      model.onDidChangeContent(function () {
+        scheduleValidation();
+        schedulePersist();
+        schedulePreviewGeneration();
+      });
+    });
+
+    client.connect();
+    scheduleValidation();
+    schedulePersist();
+    schedulePreviewGeneration();
+  });
+})();
+</script>
+</body>
+</html>

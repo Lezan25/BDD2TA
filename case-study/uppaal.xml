@@ -1,0 +1,629 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>typedef int[0,2] user_state_type;
+	const user_state_type USER_IDLE = 0;
+	const user_state_type USER_WAITING = 1;
+	const user_state_type USER_ORDERING = 2;
+	int user_state = USER_IDLE;
+	int user_ordered_amount = 0;
+	
+	typedef int[0,1] raw_storage_state_type;
+	const raw_storage_state_type RAW_STORAGE_IDLE = 0;
+	const raw_storage_state_type RAW_STORAGE_EMPTY = 1;
+	int raw_storage_state = RAW_STORAGE_IDLE;
+	int raw_storage_level = 100;
+	
+	typedef int[0,2] dough_maker_state_type;
+	const dough_maker_state_type DOUGH_MAKER_IDLE = 0;
+	const dough_maker_state_type DOUGH_MAKER_REQUESTING = 1;
+	const dough_maker_state_type DOUGH_MAKER_PROCESSING = 2;
+	int dough_maker_state = DOUGH_MAKER_IDLE;
+	
+	typedef int[0,1] dough_shaper_state_type;
+	const dough_shaper_state_type DOUGH_SHAPER_IDLE = 0;
+	const dough_shaper_state_type DOUGH_SHAPER_SHAPING = 1;
+	int dough_shaper_state = DOUGH_SHAPER_IDLE;
+	int dough_shaper_queue = 0;
+	
+	typedef int[0,1] baking_oven_state_type;
+	const baking_oven_state_type BAKING_OVEN_IDLE = 0;
+	const baking_oven_state_type BAKING_OVEN_BAKING = 1;
+	int baking_oven_state = BAKING_OVEN_IDLE;
+	int baking_oven_queue = 0;
+	
+	typedef int[0,1] cooling_rack_state_type;
+	const cooling_rack_state_type COOLING_RACK_IDLE = 0;
+	const cooling_rack_state_type COOLING_RACK_COOLING = 1;
+	int cooling_rack_state = COOLING_RACK_IDLE;
+	int cooling_rack_queue = 0;
+	
+	typedef int[0,1] packaging_machine_state_type;
+	const packaging_machine_state_type PACKAGING_MACHINE_IDLE = 0;
+	const packaging_machine_state_type PACKAGING_MACHINE_PACKAGING = 1;
+	int packaging_machine_state = PACKAGING_MACHINE_IDLE;
+	int packaging_machine_queue = 0;
+	
+	typedef int[0,0] product_storage_state_type;
+	const product_storage_state_type PRODUCT_STORAGE_IDLE = 0;
+	int product_storage_state = PRODUCT_STORAGE_IDLE;
+	int product_storage_level = 0;
+	
+	typedef int[0,1] restocker_state_type;
+	const restocker_state_type RESTOCKER_IDLE = 0;
+	const restocker_state_type RESTOCKER_RESTOCKING = 1;
+	int restocker_state = RESTOCKER_IDLE;
+	
+	broadcast chan user_starts;
+	broadcast chan user_orders_products_c;
+	broadcast chan request_raw_ingredients_b;
+	broadcast chan request_raw_ingredients_d;
+	broadcast chan request_raw_ingredients_e;
+	broadcast chan dough_processing_ends;
+	broadcast chan dough_shaping_ends;
+	broadcast chan dough_shaping_ends_b;
+	broadcast chan baking_ends;
+	broadcast chan baking_ends_b;
+	broadcast chan cooling_ends;
+	broadcast chan cooling_ends_b;
+	broadcast chan packaging_ends_c;
+	broadcast chan packaging_ends_d_trigger;
+	broadcast chan packaging_ends_d;
+	broadcast chan packaging_ends_e;
+	broadcast chan packaging_ends_f_trigger;
+	broadcast chan packaging_ends_f;
+	broadcast chan restock;
+	</declaration>
+	<template>
+		<name>user</name>
+		<declaration>clock c_30; clock c_5;</declaration>
+		<location id="id0" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+			<committed/>
+		</location>
+		<location id="id1" x="200" y="0">
+			<name x="190" y="-30">waiting</name>
+			<label kind="invariant" x="190" y="15">c_30 &lt;= 30</label>
+		</location>
+		<location id="id2" x="400" y="0">
+			<name x="390" y="-30">ordering</name>
+			<label kind="invariant" x="390" y="15">c_5 &lt;= 5</label>
+		</location>
+		<init ref="id0"/>
+		<transition id="id21">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="0" y="-40">dough_maker_state == DOUGH_MAKER_IDLE</label>
+			<label kind="synchronisation" x="0" y="-20">user_starts!</label>
+			<label kind="assignment" x="0" y="0">user_state = USER_WAITING, c_30 = 0, c_5 = 0</label>
+		</transition>
+		<transition id="id25">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="select" x="0" y="-60">i : int[1, 8]</label>
+			<label kind="guard" x="0" y="-40">c_30 == 30</label>
+			<label kind="assignment" x="0" y="0">user_state = USER_ORDERING, user_ordered_amount = i, c_30 = 0, c_5 = 0</label>
+		</transition>
+		<transition id="id26">
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="select" x="0" y="-60">i : int[1, 8]</label>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; dough_maker_state != DOUGH_MAKER_IDLE &amp;&amp; user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &lt;= product_storage_level</label>
+			<label kind="assignment" x="0" y="0">user_state = USER_ORDERING, product_storage_level -= user_ordered_amount, user_ordered_amount = i, c_30 = 0, c_5 = 0</label>
+		</transition>
+		<transition id="id27">
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="select" x="0" y="-60">i : int[1, 8]</label>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &lt;= product_storage_level &amp;&amp; dough_maker_state == DOUGH_MAKER_IDLE &amp;&amp; product_storage_level &gt; 50</label>
+			<label kind="assignment" x="0" y="0">user_state = USER_ORDERING, product_storage_level -= user_ordered_amount, user_ordered_amount = i, c_30 = 0, c_5 = 0</label>
+		</transition>
+		<transition id="id28">
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="select" x="0" y="-60">i : int[1, 8]</label>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &lt;= product_storage_level &amp;&amp; dough_maker_state == DOUGH_MAKER_IDLE &amp;&amp; product_storage_level &lt;= 50</label>
+			<label kind="synchronisation" x="0" y="-20">user_orders_products_c!</label>
+			<label kind="assignment" x="0" y="0">user_state = USER_ORDERING, product_storage_level -= user_ordered_amount, user_ordered_amount = i, c_30 = 0, c_5 = 0</label>
+		</transition>
+		<transition id="id32">
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &gt; product_storage_level</label>
+			<label kind="assignment" x="0" y="0">user_state = USER_WAITING, c_30 = 0, c_5 = 0</label>
+		</transition>
+		<transition id="id33">
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; !((dough_maker_state != DOUGH_MAKER_IDLE &amp;&amp; user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &lt;= product_storage_level) || (user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &lt;= product_storage_level &amp;&amp; dough_maker_state == DOUGH_MAKER_IDLE &amp;&amp; product_storage_level &gt; 50) || (user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &lt;= product_storage_level &amp;&amp; dough_maker_state == DOUGH_MAKER_IDLE &amp;&amp; product_storage_level &lt;= 50) || (user_ordered_amount &gt; 0 &amp;&amp; user_ordered_amount &gt; product_storage_level))</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>raw_storage</name>
+		<declaration>clock c_0;</declaration>
+		<location id="id3" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<location id="id4" x="200" y="0">
+			<name x="190" y="-30">empty</name>
+		</location>
+		<init ref="id3"/>
+	</template>
+	<template>
+		<name>dough_maker</name>
+		<declaration>clock c_5;</declaration>
+		<location id="id5" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<location id="id6" x="200" y="0">
+			<name x="190" y="-30">requesting</name>
+			<label kind="invariant" x="190" y="15">c_5 &lt;= 5</label>
+		</location>
+		<location id="id7" x="400" y="0">
+			<name x="390" y="-30">processing</name>
+			<label kind="invariant" x="390" y="15">c_5 &lt;= 5</label>
+		</location>
+		<location id="id8" x="600" y="0">
+			<name x="590" y="-30">processing_finishing_packaging_ends_d</name>
+			<label kind="invariant" x="590" y="15">c_5 &lt;= 5</label>
+		</location>
+		<location id="id9" x="800" y="0">
+			<name x="790" y="-30">processing_finishing_packaging_ends_f</name>
+			<label kind="invariant" x="790" y="15">c_5 &lt;= 5</label>
+		</location>
+		<init ref="id5"/>
+		<transition id="id34">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; raw_storage_level &gt;= 6 &amp;&amp; raw_storage_level &lt;= 20</label>
+			<label kind="assignment" x="0" y="0">raw_storage_level -= 5, dough_maker_state = DOUGH_MAKER_PROCESSING, c_5 = 0</label>
+		</transition>
+		<transition id="id35">
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; raw_storage_level &gt;= 21 &amp;&amp; raw_storage_level &lt;= 25 &amp;&amp; restocker_state == RESTOCKER_IDLE</label>
+			<label kind="synchronisation" x="0" y="-20">request_raw_ingredients_b!</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, raw_storage_level -= 5, dough_maker_state = DOUGH_MAKER_PROCESSING, c_5 = 0</label>
+		</transition>
+		<transition id="id38">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; raw_storage_level &gt; 25</label>
+			<label kind="assignment" x="0" y="0">raw_storage_level -= 5, dough_maker_state = DOUGH_MAKER_PROCESSING, c_5 = 0</label>
+		</transition>
+		<transition id="id39">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; raw_storage_level == 5</label>
+			<label kind="synchronisation" x="0" y="-20">request_raw_ingredients_d!</label>
+			<label kind="assignment" x="0" y="0">raw_storage_level = 0, dough_maker_state = DOUGH_MAKER_PROCESSING, c_5 = 0</label>
+		</transition>
+		<transition id="id42">
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; raw_storage_level &lt; 5</label>
+			<label kind="synchronisation" x="0" y="-20">request_raw_ingredients_e!</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, c_5 = 0</label>
+		</transition>
+		<transition id="id45">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5</label>
+			<label kind="synchronisation" x="0" y="-20">dough_processing_ends!</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, dough_shaper_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id48">
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; !((raw_storage_level &gt;= 6 &amp;&amp; raw_storage_level &lt;= 20) || (raw_storage_level &gt;= 21 &amp;&amp; raw_storage_level &lt;= 25 &amp;&amp; restocker_state == RESTOCKER_IDLE) || (raw_storage_level &gt; 25) || (raw_storage_level == 5) || (raw_storage_level &lt; 5))</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+		<transition id="id49">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_d_trigger?</label>
+		</transition>
+		<transition id="id50">
+			<source ref="id8"/>
+			<target ref="id5"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5</label>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_d!</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_queue = 0, product_storage_level += 5, dough_maker_state = DOUGH_MAKER_IDLE, dough_shaper_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id55">
+			<source ref="id7"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_f_trigger?</label>
+		</transition>
+		<transition id="id56">
+			<source ref="id9"/>
+			<target ref="id5"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5</label>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_f!</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_queue -= 1, product_storage_level += 5, dough_maker_state = DOUGH_MAKER_IDLE, dough_shaper_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id22">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="0" y="-20">user_starts?</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, c_5 = 0</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="0" y="-20">user_starts?</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, c_5 = 0</label>
+		</transition>
+		<transition id="id24">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="0" y="-20">user_starts?</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, c_5 = 0</label>
+		</transition>
+		<transition id="id29">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="0" y="-20">user_orders_products_c?</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, c_5 = 0</label>
+		</transition>
+		<transition id="id30">
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="0" y="-20">user_orders_products_c?</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, c_5 = 0</label>
+		</transition>
+		<transition id="id31">
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="0" y="-20">user_orders_products_c?</label>
+			<label kind="assignment" x="0" y="0">dough_maker_state = DOUGH_MAKER_REQUESTING, c_5 = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>dough_shaper</name>
+		<declaration>clock c_5;</declaration>
+		<location id="id10" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<location id="id11" x="200" y="0">
+			<name x="190" y="-30">shaping</name>
+			<label kind="invariant" x="190" y="15">c_5 &lt;= 5</label>
+		</location>
+		<init ref="id10"/>
+		<transition id="id61">
+			<source ref="id11"/>
+			<target ref="id10"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; dough_shaper_queue == 1</label>
+			<label kind="synchronisation" x="0" y="-20">dough_shaping_ends!</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_IDLE, dough_shaper_queue = 0, baking_oven_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id64">
+			<source ref="id11"/>
+			<target ref="id11"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; dough_shaper_queue &gt; 1</label>
+			<label kind="synchronisation" x="0" y="-20">dough_shaping_ends_b!</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_SHAPING, dough_shaper_queue -= 1, baking_oven_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id67">
+			<source ref="id11"/>
+			<target ref="id11"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; !((dough_shaper_queue == 1) || (dough_shaper_queue &gt; 1))</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+		<transition id="id46">
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="0" y="-20">dough_processing_ends?</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_SHAPING, c_5 = 0</label>
+		</transition>
+		<transition id="id47">
+			<source ref="id11"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="0" y="-20">dough_processing_ends?</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_SHAPING, c_5 = 0</label>
+		</transition>
+		<transition id="id53">
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_d?</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_SHAPING, c_5 = 0</label>
+		</transition>
+		<transition id="id54">
+			<source ref="id11"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_d?</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_SHAPING, c_5 = 0</label>
+		</transition>
+		<transition id="id59">
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_f?</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_SHAPING, c_5 = 0</label>
+		</transition>
+		<transition id="id60">
+			<source ref="id11"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_f?</label>
+			<label kind="assignment" x="0" y="0">dough_shaper_state = DOUGH_SHAPER_SHAPING, c_5 = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>baking_oven</name>
+		<declaration>clock c_5;</declaration>
+		<location id="id12" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<location id="id13" x="200" y="0">
+			<name x="190" y="-30">baking</name>
+			<label kind="invariant" x="190" y="15">c_5 &lt;= 5</label>
+		</location>
+		<init ref="id12"/>
+		<transition id="id68">
+			<source ref="id13"/>
+			<target ref="id12"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; baking_oven_queue == 1</label>
+			<label kind="synchronisation" x="0" y="-20">baking_ends!</label>
+			<label kind="assignment" x="0" y="0">baking_oven_state = BAKING_OVEN_IDLE, baking_oven_queue = 0, cooling_rack_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id71">
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; baking_oven_queue &gt; 1</label>
+			<label kind="synchronisation" x="0" y="-20">baking_ends_b!</label>
+			<label kind="assignment" x="0" y="0">baking_oven_state = BAKING_OVEN_BAKING, baking_oven_queue -= 1, cooling_rack_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id74">
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; !((baking_oven_queue == 1) || (baking_oven_queue &gt; 1))</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+		<transition id="id62">
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="0" y="-20">dough_shaping_ends?</label>
+			<label kind="assignment" x="0" y="0">baking_oven_state = BAKING_OVEN_BAKING, c_5 = 0</label>
+		</transition>
+		<transition id="id63">
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="0" y="-20">dough_shaping_ends?</label>
+			<label kind="assignment" x="0" y="0">baking_oven_state = BAKING_OVEN_BAKING, c_5 = 0</label>
+		</transition>
+		<transition id="id65">
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="0" y="-20">dough_shaping_ends_b?</label>
+			<label kind="assignment" x="0" y="0">baking_oven_state = BAKING_OVEN_BAKING, c_5 = 0</label>
+		</transition>
+		<transition id="id66">
+			<source ref="id13"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="0" y="-20">dough_shaping_ends_b?</label>
+			<label kind="assignment" x="0" y="0">baking_oven_state = BAKING_OVEN_BAKING, c_5 = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>cooling_rack</name>
+		<declaration>clock c_5;</declaration>
+		<location id="id14" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<location id="id15" x="200" y="0">
+			<name x="190" y="-30">cooling</name>
+			<label kind="invariant" x="190" y="15">c_5 &lt;= 5</label>
+		</location>
+		<init ref="id14"/>
+		<transition id="id75">
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; cooling_rack_queue == 1</label>
+			<label kind="synchronisation" x="0" y="-20">cooling_ends!</label>
+			<label kind="assignment" x="0" y="0">cooling_rack_state = COOLING_RACK_IDLE, cooling_rack_queue = 0, packaging_machine_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id78">
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; cooling_rack_queue &gt; 1</label>
+			<label kind="synchronisation" x="0" y="-20">cooling_ends_b!</label>
+			<label kind="assignment" x="0" y="0">cooling_rack_state = COOLING_RACK_COOLING, cooling_rack_queue -= 1, packaging_machine_queue += 1, c_5 = 0</label>
+		</transition>
+		<transition id="id81">
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; !((cooling_rack_queue == 1) || (cooling_rack_queue &gt; 1))</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+		<transition id="id69">
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="0" y="-20">baking_ends?</label>
+			<label kind="assignment" x="0" y="0">cooling_rack_state = COOLING_RACK_COOLING, c_5 = 0</label>
+		</transition>
+		<transition id="id70">
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="0" y="-20">baking_ends?</label>
+			<label kind="assignment" x="0" y="0">cooling_rack_state = COOLING_RACK_COOLING, c_5 = 0</label>
+		</transition>
+		<transition id="id72">
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="0" y="-20">baking_ends_b?</label>
+			<label kind="assignment" x="0" y="0">cooling_rack_state = COOLING_RACK_COOLING, c_5 = 0</label>
+		</transition>
+		<transition id="id73">
+			<source ref="id15"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="0" y="-20">baking_ends_b?</label>
+			<label kind="assignment" x="0" y="0">cooling_rack_state = COOLING_RACK_COOLING, c_5 = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>packaging_machine</name>
+		<declaration>clock c_5;</declaration>
+		<location id="id16" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<location id="id17" x="200" y="0">
+			<name x="190" y="-30">packaging</name>
+			<label kind="invariant" x="190" y="15">c_5 &lt;= 5</label>
+		</location>
+		<init ref="id16"/>
+		<transition id="id82">
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; packaging_machine_queue == 1 &amp;&amp; product_storage_level &lt; 85</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_IDLE, packaging_machine_queue = 0, product_storage_level += 5, c_5 = 0</label>
+		</transition>
+		<transition id="id83">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; packaging_machine_queue &gt; 1 &amp;&amp; product_storage_level &lt; 85</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, packaging_machine_queue -= 1, product_storage_level += 5, c_5 = 0</label>
+		</transition>
+		<transition id="id84">
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; packaging_machine_queue == 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_REQUESTING</label>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_c!</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_IDLE, packaging_machine_queue = 0, product_storage_level += 5, c_5 = 0</label>
+		</transition>
+		<transition id="id88">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; packaging_machine_queue &gt; 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_REQUESTING</label>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_e!</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, packaging_machine_queue -= 1, product_storage_level += 5, c_5 = 0</label>
+		</transition>
+		<transition id="id92">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; !((packaging_machine_queue == 1 &amp;&amp; product_storage_level &lt; 85) || (packaging_machine_queue &gt; 1 &amp;&amp; product_storage_level &lt; 85) || (packaging_machine_queue == 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_REQUESTING) || (packaging_machine_queue == 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_PROCESSING) || (packaging_machine_queue &gt; 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_REQUESTING) || (packaging_machine_queue &gt; 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_PROCESSING))</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+		<transition id="id93">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; packaging_machine_queue == 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_PROCESSING</label>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_d_trigger!</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+		<transition id="id94">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="guard" x="0" y="-40">c_5 == 5 &amp;&amp; packaging_machine_queue &gt; 1 &amp;&amp; product_storage_level &gt;= 85 &amp;&amp; dough_maker_state == DOUGH_MAKER_PROCESSING</label>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_f_trigger!</label>
+			<label kind="assignment" x="0" y="0">c_5 = 0</label>
+		</transition>
+		<transition id="id51">
+			<source ref="id16"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_d?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_IDLE, c_5 = 0</label>
+		</transition>
+		<transition id="id52">
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_d?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_IDLE, c_5 = 0</label>
+		</transition>
+		<transition id="id57">
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_f?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, c_5 = 0</label>
+		</transition>
+		<transition id="id58">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="0" y="-20">packaging_ends_f?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, c_5 = 0</label>
+		</transition>
+		<transition id="id76">
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="0" y="-20">cooling_ends?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, c_5 = 0</label>
+		</transition>
+		<transition id="id77">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="0" y="-20">cooling_ends?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, c_5 = 0</label>
+		</transition>
+		<transition id="id79">
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="0" y="-20">cooling_ends_b?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, c_5 = 0</label>
+		</transition>
+		<transition id="id80">
+			<source ref="id17"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="0" y="-20">cooling_ends_b?</label>
+			<label kind="assignment" x="0" y="0">packaging_machine_state = PACKAGING_MACHINE_PACKAGING, c_5 = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>product_storage</name>
+		<declaration>clock c_0;</declaration>
+		<location id="id18" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<init ref="id18"/>
+	</template>
+	<template>
+		<name>restocker</name>
+		<declaration>clock c_10;</declaration>
+		<location id="id19" x="0" y="0">
+			<name x="-10" y="-30">idle</name>
+		</location>
+		<location id="id20" x="200" y="0">
+			<name x="190" y="-30">restocking</name>
+			<label kind="invariant" x="190" y="15">c_10 &lt;= 10</label>
+		</location>
+		<init ref="id19"/>
+		<transition id="id95">
+			<source ref="id20"/>
+			<target ref="id19"/>
+			<label kind="guard" x="0" y="-40">c_10 == 10</label>
+			<label kind="synchronisation" x="0" y="-20">restock!</label>
+			<label kind="assignment" x="0" y="0">raw_storage_level = 100, restocker_state = RESTOCKER_IDLE, c_10 = 0</label>
+		</transition>
+		<transition id="id36">
+			<source ref="id19"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="0" y="-20">request_raw_ingredients_b?</label>
+			<label kind="assignment" x="0" y="0">restocker_state = RESTOCKER_RESTOCKING, c_10 = 0</label>
+		</transition>
+		<transition id="id37">
+			<source ref="id20"/>
+			<target ref="id20"/>
+			<label kind="synchronisation" x="0" y="-20">request_raw_ingredients_b?</label>
+			<label kind="assignment" x="0" y="0">restocker_state = RESTOCKER_RESTOCKING, c_10 = 0</label>
+		</transition>
+	</template>
+	<system>
+user_1 = user();
+raw_storage_1 = raw_storage();
+dough_maker_1 = dough_maker();
+dough_shaper_1 = dough_shaper();
+baking_oven_1 = baking_oven();
+cooling_rack_1 = cooling_rack();
+packaging_machine_1 = packaging_machine();
+product_storage_1 = product_storage();
+restocker_1 = restocker();
+system user_1, raw_storage_1, dough_maker_1, dough_shaper_1, baking_oven_1, cooling_rack_1, packaging_machine_1, product_storage_1, restocker_1;
+	</system>
+	<queries>
+		<query>
+			<formula>E[&lt;=400; 100] (max: dough_shaper_queue)</formula>
+			<comment>peak_shaper_backlog</comment>
+		</query>
+		<query>
+			<formula>E[&lt;=400; 100] (min: product_storage_level)</formula>
+			<comment>lowest_storage_stock_level</comment>
+		</query>	</queries>
+</nta>

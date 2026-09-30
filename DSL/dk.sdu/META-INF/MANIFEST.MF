@@ -1,0 +1,31 @@
+Manifest-Version: 1.0
+Automatic-Module-Name: dk.sdu
+Bundle-ManifestVersion: 2
+Bundle-Name: dk.sdu
+Bundle-Vendor: My Company
+Bundle-Version: 1.0.0.qualifier
+Bundle-SymbolicName: dk.sdu; singleton:=true
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.eclipse.xtext,
+ org.eclipse.xtext.xbase,
+ org.eclipse.equinox.common;bundle-version="3.19.0",
+ org.eclipse.emf.ecore,
+ org.eclipse.xtend.lib;bundle-version="2.41.0",
+ org.eclipse.xtext.xbase.lib;bundle-version="2.41.0",
+ org.eclipse.emf.common,
+ org.antlr.runtime;bundle-version="[3.2.0,3.2.1)"
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Export-Package: dk.sdu,
+ dk.sdu.bdd,
+ dk.sdu.bdd.impl,
+ dk.sdu.bdd.util,
+ dk.sdu.generator,
+ dk.sdu.model,
+ dk.sdu.parser.antlr,
+ dk.sdu.parser.antlr.internal,
+ dk.sdu.scoping,
+ dk.sdu.serializer,
+ dk.sdu.services,
+ dk.sdu.translation,
+ dk.sdu.validation
+Import-Package: org.apache.log4j

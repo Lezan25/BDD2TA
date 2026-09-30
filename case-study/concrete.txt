@@ -1,0 +1,274 @@
+model Simplified I4 Factory
+
+entity user {
+	states: idle, waiting, ordering
+	properties: ordered amount = 0
+}
+
+entity raw storage {
+  states: idle, empty
+  properties: level = 100
+}
+
+entity dough maker {
+  states: idle, requesting, processing
+}
+
+entity dough shaper {
+  states: idle, shaping
+  properties: queue = 0
+}
+
+entity baking oven {
+  states: idle, baking
+  properties: queue = 0
+}
+
+entity cooling rack {
+  states: idle, cooling
+  properties: queue = 0
+}
+
+entity packaging machine {
+  states: idle, packaging
+  properties: queue = 0
+}
+
+entity product storage {
+  states: idle
+  properties: level = 0
+}
+
+entity restocker {
+  states: idle, restocking
+  properties:
+}
+
+Scenario: User starts
+	Given the user is idle
+		And the dough maker is idle
+	When 0 seconds have passed
+	Then the user is waiting
+		And the dough maker is requesting
+
+Scenario: User starts ordering
+	Given the user is waiting
+	When 30 seconds have passed
+	Then the user is ordering
+		And the user's ordered amount is between 1 and 8
+
+Scenario: User orders products A
+	Given the user is ordering
+		And the dough maker is not idle
+		And the user's ordered amount is greater than 0
+		And the user's ordered amount is less or equal to the product storage's level
+	Whenever 5 seconds have passed
+	Then the product storage's level is decreased by the user's ordered amount
+		And the user's ordered amount is between 1 and 8
+
+Scenario: User orders products B
+	Given the user is ordering
+		And the user's ordered amount is greater than 0
+		And the user's ordered amount is less or equal to the product storage's level
+		And the dough maker is idle
+		And the product storage's level is greater than 50
+	Whenever 5 seconds have passed
+	Then the product storage's level is decreased by the user's ordered amount
+		And the user's ordered amount is between 1 and 8
+
+Scenario: User orders products C
+	Given the user is ordering
+		And the user's ordered amount is greater than 0
+		And the user's ordered amount is less or equal to the product storage's level
+		And the dough maker is idle
+		And the product storage's level is less or equal to 50
+	Whenever 5 seconds have passed
+	Then the product storage's level is decreased by the user's ordered amount
+		And the dough maker is requesting
+		And the user's ordered amount is between 1 and 8
+
+Scenario: User orders products D
+	Given the user is ordering
+		And the user's ordered amount is greater than 0
+		And the user's ordered amount is greater than the product storage's level
+	When 5 seconds have passed
+	Then the user is waiting
+
+Scenario: Request raw ingredients A
+	Given the dough maker is requesting
+	    And the raw storage's level is between 6 and 20
+	When 5 seconds have passed
+	Then the raw storage's level is decreased by 5
+		And the dough maker is processing
+
+Scenario: Request raw ingredients B
+	Given the dough maker is requesting
+		And the raw storage's level is between 21 and 25
+		And the restocker is idle
+	Whenever 5 seconds have passed
+	Then the restocker is restocking
+		And the raw storage's level is decreased by 5
+		And the dough maker is processing
+
+Scenario: Request raw ingredients C
+	Given the dough maker is requesting
+	    And the raw storage's level is greater than 25
+	When 5 seconds have passed
+	Then the raw storage's level is decreased by 5
+		And the dough maker is processing
+
+Scenario: Request raw ingredients D
+	Given the dough maker is requesting
+	    And the raw storage's level is 5
+	When 5 seconds have passed
+	Then the raw storage is empty
+		And the raw storage's level is 0
+		And the dough maker is processing
+
+Scenario: Request raw ingredients E
+	Given the dough maker is requesting
+		And the raw storage's level is less than 5
+	Whenever 5 seconds have passed
+	Then the raw storage is empty
+
+Scenario: Dough processing ends
+	Given the dough maker is processing
+	When 5 seconds have passed
+	Then the dough maker is requesting
+		And the dough shaper is shaping
+		And the dough shaper's queue is increased by 1
+
+Scenario: Dough shaping ends A
+	Given the dough shaper is shaping
+		And the dough shaper's queue is 1
+	When 5 seconds have passed
+	Then the dough shaper is idle
+		And the dough shaper's queue is 0
+		And the baking oven is baking
+		And the baking oven's queue is increased by 1
+
+Scenario: Dough shaping ends B
+	Given the dough shaper is shaping
+		And the dough shaper's queue is greater than 1
+	Whenever 5 seconds have passed
+	Then the dough shaper's queue is decreased by 1
+		And the baking oven is baking
+		And the baking oven's queue is increased by 1
+
+Scenario: Baking ends A
+	Given the baking oven is baking
+		And the baking oven's queue is 1
+	When 5 seconds have passed
+	Then the baking oven is idle
+		And the baking oven's queue is 0
+		And the cooling rack is cooling
+		And the cooling rack's queue is increased by 1
+
+Scenario: Baking ends B
+	Given the baking oven is baking
+		And the baking oven's queue is greater than 1
+	Whenever 5 seconds have passed
+	Then the baking oven's queue is decreased by 1
+		And the cooling rack is cooling
+		And the cooling rack's queue is increased by 1
+
+Scenario: Cooling ends A
+	Given the cooling rack is cooling
+		And the cooling rack's queue is 1
+	When 5 seconds have passed
+	Then the cooling rack is idle
+		And the cooling rack's queue is 0
+		And the packaging machine is packaging
+		And the packaging machine's queue is increased by 1
+
+Scenario: Cooling ends B
+	Given the cooling rack is cooling
+		And the cooling rack's queue is greater than 1
+	Whenever 5 seconds have passed
+	Then the cooling rack's queue is decreased by 1
+		And the packaging machine is packaging
+		And the packaging machine's queue is increased by 1
+
+Scenario: Packaging ends A
+	Given the packaging machine is packaging
+		And the packaging machine's queue is 1
+		And the product storage's level is less than 85
+	When 5 seconds have passed
+	Then the packaging machine is idle
+		And the packaging machine's queue is 0
+		And the product storage's level is increased by 5
+
+Scenario: Packaging ends B
+	Given the packaging machine is packaging
+		And the packaging machine's queue is greater than 1
+		And the product storage's level is less than 85
+	Whenever 5 seconds have passed
+	Then the packaging machine's queue is decreased by 1
+		And the product storage's level is increased by 5
+
+Scenario: Packaging ends C
+	Given the packaging machine is packaging
+		And the packaging machine's queue is 1
+		And the product storage's level is greater or equal to 85
+		And the dough maker is requesting
+	When 5 seconds have passed
+	Then the packaging machine is idle
+		And the packaging machine's queue is 0
+		And the product storage's level is increased by 5
+		And the dough maker is idle
+
+Scenario: Packaging ends D
+	Given the packaging machine is packaging
+		And the packaging machine's queue is 1
+		And the product storage's level is greater or equal to 85
+		And the dough maker is processing
+	When 5 seconds have passed
+		And dough maker processing finishes
+	Then the packaging machine is idle
+		And the packaging machine's queue is 0
+		And the product storage's level is increased by 5
+		And the dough maker is idle
+		And the dough shaper is shaping
+		And the dough shaper's queue is increased by 1
+
+Scenario: Packaging ends E
+	Given the packaging machine is packaging
+		And the packaging machine's queue is greater than 1
+		And the product storage's level is greater or equal to 85
+		And the dough maker is requesting
+	Whenever 5 seconds have passed
+	Then the packaging machine's queue is decreased by 1
+		And the product storage's level is increased by 5
+		And the dough maker is idle
+
+Scenario: Packaging ends F
+	Given the packaging machine is packaging
+		And the packaging machine's queue is greater than 1
+		And the product storage's level is greater or equal to 85
+		And the dough maker is processing
+	Whenever 5 seconds have passed
+		And dough maker processing finishes
+	Then the packaging machine's queue is decreased by 1
+		And the product storage's level is increased by 5
+		And the dough maker is idle
+		And the dough shaper is shaping
+		And the dough shaper's queue is increased by 1
+
+Scenario: Restock
+	Given the restocker is restocking
+	When 10 seconds have passed
+	Then the raw storage is idle
+		And the raw storage's level is 100
+		And the restocker is idle
+
+
+
+Requirement: peak shaper backlog
+Given the system is running
+Within 400 seconds
+Check the maximum of the dough shaper's queue
+
+Requirement: lowest storage stock level
+Given the system is running
+Within 400 seconds
+Check the minimum of the product storage's level
